@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+ITEMS=( "config" "initrd.img" "System.map" "vmlinuz" )
+NAME="efikernelhack"
+BASE="/usr/share/${NAME}"
+while read pkg; do
+   version=${pkg/*pve-kernel-/}
+   version=${version/_*/}
+   for file in ${ITEMS[*]}; do
+      dpkg-divert --package "$NAME" --rename --divert "$BASE"/"${file}-${version}" /boot/"${file}-${version}" || exit 1
+   done
+done < <( grep 'pve-kernel-' )
+exit 0

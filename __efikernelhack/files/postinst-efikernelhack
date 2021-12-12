@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+name="efikernelhack"
+base="/usr/share/${name}"
+version="$1"
+mkdir -p "$base"
+for file in System.map- vmlinuz- config-; do
+   dpkg-divert --package "$name" --rename --remove /boot/"${file}${version}"
+done
+dpkg-divert --package "$name" --no-rename --remove /boot/initrd.img-"$version"
+rm -f "$base"/initrd.img-"$version"

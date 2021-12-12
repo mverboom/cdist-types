@@ -1,0 +1,34 @@
+#!/bin/bash
+
+lsb_id=$( cat $__global/explorer/lsb_id )
+distro=$( cat $__global/explorer/distro )
+fstype=$( cat $__object/explorer/fstype )
+
+if test "$lsb_id" = "Debian" -a "$fstype" = "vfat"; then
+   __directory /usr/share/efikernelhack --owner root --group root --mode 0750
+
+   # Add pre/post inst hooks for default debian kernel
+   __directory /etc/kernel/preinst.d --owner root --group root --mode 0755 --parents
+   require="__directory/etc/kernel/preinst.d" \
+   __file /etc/kernel/preinst.d/efikernelhack \
+     --source $__type/files/preinst-efikernelhack \
+     --state exists --owner root --group root --mode 0755
+
+   __directory /etc/kernel/postinst.d --owner root --group root --mode 0755 --parents
+   require="__directory/etc/kernel/postinst.d" \
+   __file /etc/kernel/postinst.d/efikernelhack \
+     --source $__type/files/postinst-efikernelhack \
+     --state exists --owner root --group root --mode 0755
+   # On proxmox install global hook for pve-kernel pacakge as they don't
+   # run the pre-inst hook
+   if test "$distro" = "proxmox"; then
+      __file /usr/local/bin/preinst-pve-efikernelhack \
+         --source $__type/files/preinst-pve-efikernelhack \
+         --state exists --mode 0750
+      __file /etc/apt/apt.conf.d/01pve-efikernelhack \
+         --state exists \
+         --source - <<-EOF
+	DPkg::Pre-Install-Pkgs {"/usr/local/bin/preinst-pve-efikernelhack";};
+	EOF
+   fi
+fi
