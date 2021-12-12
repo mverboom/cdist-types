@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if test -f "$__object/parameter/file"; then
+   file="$(cat "$__object/parameter/file")"
+else
+   file="/$__object_id"
+fi
+cat "$file"
