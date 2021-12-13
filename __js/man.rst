@@ -30,15 +30,19 @@ OPTIONAL PARAMETERS
 file
    The location of the file. If this is not specified the object name is used.
 
+onchange
+   When the content of the file changes, run the argument as a command.
+
 EXAMPLES
 --------
 
 .. code-block:: sh
 
-    # Configure client for roaming access
+    # Change values in config.js and restart service on change
     __js /etc/config.js --vars config \
       --set 'config.email="admin@example.com' \
-      --set 'config.servername="server.example.com'
+      --set 'config.servername="server.example.com' \
+      --onchange 'service restart daemon'
 
 
 AUTHORS

@@ -2,21 +2,25 @@
 
 vars=$(cat $__object/parameter/vars | sed "s/,/ /g" )
 if test -f "$__object/parameter/file"; then
-   file="$(cat "$__object/parameter/file")"
+   targetfile="$(cat "$__object/parameter/file")"
 else
-   file="/$__object_id"
+   targetfile="/$__object_id"
 fi
-tmpfile=$(mktemp)
+jsfile=$(mktemp)
+newfile=$(mktemp)
 
 (
 cat "$__type/files/pre.js"
 cat "$__object/parameter/set" | sed "s/$/;/"
 cat "$__type/files/post.js"
-) > "$tmpfile"
-echo "rm -f \"$file\""
-echo "cat > \"$file\" <<EOF"
-node "$tmpfile" "$__object/explorer/file" $vars
-echo "EOF"
-rm -f "$tmpfile"
-#node "$__type/files/test.js" "$__object/explorer/file" $vars > /tmp/test
-#cat $__object/parameter/set >> /tmp/test
+) > "$jsfile"
+node "$jsfile" "$__object/explorer/file" $vars > "$newfile"
+rm -f "$jsfile"
+if !diff "$__object/explorer/file" "$newfile" > /dev/null; then
+   echo "rm -f \"$targetfile\""
+   echo "cat > \"$targetfile\" <<EOF"
+   cat "$newfile"
+   echo "EOF"
+   test -f "$__object/parameter/onchange" && cat "$__object/parameter/onchange"
+fi
+rm -f "$newfile"
