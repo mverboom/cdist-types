@@ -16,7 +16,7 @@ cat "$__type/files/post.js"
 ) > "$jsfile"
 node "$jsfile" "$__object/explorer/file" $vars > "$newfile"
 rm -f "$jsfile"
-if !diff "$__object/explorer/file" "$newfile" > /dev/null; then
+if ! diff "$__object/explorer/file" "$newfile" > /dev/null; then
    echo "rm -f \"$targetfile\""
    echo "cat > \"$targetfile\" <<EOF"
    cat "$newfile"
