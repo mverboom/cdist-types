@@ -1,4 +1,4 @@
-cdist-type__roaming(7)
+cdist-type__js(7)
 ==========================
 
 
@@ -50,7 +50,7 @@ AUTHORS
 Mark Verboom <mark--@--verboom.net>
 
 
-COPYING
--------
+COPYRIGHT
+---------
 Copyright \(C) 2021 Mark Verboom. Free use of this software is
 granted under the terms of the GNU General Public License version 3 (GPLv3).
