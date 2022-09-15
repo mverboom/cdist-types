@@ -1,0 +1,71 @@
+#!/bin/bash
+
+state=$(cat "${__object}/parameter/state")
+cfgfile=$(cat "${__object}/parameter/cfgfile")
+script=$(cat "${__object}/parameter/script")
+cdisthost=$(cat "${__object}/parameter/cdisthost")
+cdistuser=$(cat "${__object}/parameter/cdistuser")
+port=$(cat "${__object}/parameter/port")
+fqdn=$( cat $__object/explorer/fqdn )
+
+case "$state" in
+"present")
+   if test ! -s "$cfgfile"; then
+      keyfile=$(mktemp -u)
+      ssh-keygen -P "" -o -a 100 -t ed25519 \
+         -C "cdist-poll $fqdn $(date \"+%Y%m%d\")" \
+         -f "$keyfile"
+      cat "${keyfile}".pub "${keyfile}" > "$cfgfile"
+      rm "${keyfile}".pub "${keyfile}"
+   fi
+
+   public="$( head -n 1 "$cfgfile")"
+   priv="$( tail -n +2 "$cfgfile")"
+
+   authkey="command=\"${script} ${fqdn}\",no-X11-forwarding,no-agent-forwarding,no-pty ${public}"
+   grep -q "$authkey" ~/.ssh/authorized_keys || \
+      echo "$authkey" >> ~/.ssh/authorized_keys
+
+   __ssh_dot_ssh root
+   require="__ssh_dot_ssh/root" __file /root/.ssh/.cdist-poll \
+      --state present --mode 0600 \
+      --source - <<-EOF
+	$priv
+	EOF
+   require="__ssh_dot_ssh/root" __file /root/.ssh/.cdist-poll.pub \
+      --state present --mode 0600 \
+      --source - <<-EOF
+	$public
+	EOF
+
+   knownhosts="$( ssh-keyscan ${cdisthost} 2> /dev/null )"
+   require="__ssh_dot_ssh/root" __line /root/.ssh/known_hosts \
+      --state present --line "$knownhosts"
+
+   __file /usr/local/bin/cdist-poll --state present --source - \
+      --mode 0700 --owner root --group root <<-EOF
+	#!/bin/bash
+	ssh -T -i /root/.ssh/.cdist-poll -p "$port" ${cdistuser}@${cdisthost}
+	EOF
+   __file /etc/cron.daily/cdist-poll --state present --source - \
+      --mode 0755 --owner root --group root <<-EOF
+	#!/bin/sh
+	/usr/local/bin/cdist-poll
+	EOF
+   __package anacron --state present
+;;
+"absent")
+   test ! -s "$cfgfile" && { echo "Configfile $cfgfile has no information."; exit 1; }
+   public="$( head -n 1 "$cfgfile")"
+   authkey="command=\"${script} ${fqdn}\",no-X11-forwarding,no-agent-forwarding,no-pty ${public}"
+   line=$(grep -n "$authkey" ~/.ssh/authorized_keys | cut -d':' -f 1)
+   sed -i "${line}d" ~/.ssh/authorized_keys
+      
+   __file /root/.ssh/.cdist-poll --state absent
+   __file /root/.ssh/.cdist-poll.pub --state absent
+   __file /etc/cron.daily/cdist-poll --state absent
+   __file /usr/local/bin/cdist-poll --state absent
+   rm -f "$cfgfile"
+;;
+esac
+exit 0 
