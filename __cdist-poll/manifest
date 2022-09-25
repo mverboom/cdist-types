@@ -39,7 +39,9 @@ case "$state" in
 	EOF
 
    knownhosts="$( ssh-keyscan ${cdisthost} 2> /dev/null )"
-   require="__ssh_dot_ssh/root" __line /root/.ssh/known_hosts \
+   require="__ssh_dot_ssh/root" __file /root/.ssh/known_hosts \
+      --state exists --owner root --group root
+   require="__file/root/.ssh/known_hosts" __line /root/.ssh/known_hosts \
       --state present --line "$knownhosts"
 
    __file /usr/local/bin/cdist-poll --state present --source - \
