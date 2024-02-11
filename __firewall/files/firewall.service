@@ -1,0 +1,9 @@
+[Unit]
+Description=firewall
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/firewall
+
+[Install]
+WantedBy=network-online.target

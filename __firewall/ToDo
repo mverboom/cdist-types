@@ -1,0 +1,20 @@
+ToDo:
+v other directory than /etc/iptables.d -> 1 or 2 file names per ipv4/ipv6
+v own __file creator for all iptable rule files
+v create single file with all rules like fwbuilder with iptables restore
+  v seperate ranges for *filter *mangle *nat
+v v6 and v4 support
+v own activation script
+v own systemd unit for activation
+v delete remote rules no longer in ruleset
+v own services resolution file
+v host expansion to ip address
+v chain expansion
+v documentation
+v abort on error
+v multiple same items under single heading
+v implement networks expansion
+* option to exclude comments
+* verify required commands: dig?
+* cleanup
+* single rule type for both ipv4 and ipv6

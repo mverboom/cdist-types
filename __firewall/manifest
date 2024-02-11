@@ -1,0 +1,221 @@
+#!/bin/bash
+
+#exec > /tmp/firewall.log 2>&1
+#set -x
+
+set -e
+
+cfg="$(cat "$__object/parameter/rules")"
+test -f "$__object/parameter/db" && db="$(cat "$__object/parameter/db")"
+
+error() {
+   ( >&2 "Error: $1" )
+   exit 1
+}
+
+readdb() {
+   declare -g -A services hosts networks
+
+   while IFS='=' read var val; do
+      if [[ $var == \[*] ]]; then
+         section="${var:1:-1}"
+      elif [[ $val ]]; then
+         declare -g -A "$section[$var]=$val"
+      fi
+   done < <(grep -v "^#" "$1")
+}
+
+readconfig() {
+   local var val section tables=" filter nat mangle log filter4 nat4 mangle4 log4 filter6 nat6 mangle6 log6 "
+   local globalkeys=" policy established icmp proto "
+
+   sections=()
+   while IFS='=' read var val; do
+      if [[ $var == \[*] ]]; then
+          section="${var:1:-1}"
+          section="${section// /_}"
+          test "$section" != "global" && sections+=( "$section" )
+          itemcount=1
+      elif [[ $val ]]; then
+          if test "$section" = "global"; then
+             test "${globalkeys/$var/}" = "${globalkeys}" && 
+                error "Unknown key ${var} in section global."
+             declare -g -A "$section[$var]=$val"
+          else
+             test "${tables/$var/}" = "${tables}" && 
+                error "Unknown table ${var} in section $section."
+             declare -g -A "$var[${itemcount}%${section}]=$val"
+             itemcount=$(( itemcount + 1 ))
+          fi
+      fi
+   done < <(grep -v "^#" "$1")
+}
+
+genrule() {
+   ipv="$1"
+   rul="$2"
+   echo "$3" >> "${rules}-${ipv}-${rul}"
+}
+
+readconfig "$cfg"
+test -n "$db" && readdb "$db"
+
+rules="$(mktemp)"
+rm -f "$rules"
+
+test "${global[proto]}" = "" && protos=( 4 )
+test "${global[proto]/4/}" != "${global[proto]}" && protos+=( 4 )
+test "${global[proto]/6/}" != "${global[proto]}" && protos+=( 6 )
+
+# Flush any rules before installing
+for proto in "${protos[@]}"; do
+   for chain in INPUT OUTPUT FORWARD; do
+      genrule $proto filter "-F $chain"
+   done
+done
+
+# Allow related and established
+test "${global[established]}" = "true" &&
+   for proto in "${protos[@]}"; do
+      genrule $proto filter "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT"
+   done
+
+# Always allow icmp
+test "${global[icmp]}" = "true" &&
+   for proto in "${protos[@]}"; do
+      genrule $proto filter "-I INPUT -p icmp -j ACCEPT"
+   done
+
+dblookup() {
+   dbhostlookup() {
+      local key val t
+      key="$1"
+      val="$2"
+      t="A"
+      test "$proto" = "6" && t="AAAA"
+      test "$val" != "" && { echo "$val"; return; }
+      val="$( dig +short +search "$key" "$t" | tail -1)"
+      test "$val" = "" && error "Could not host lookup ${key}"
+      echo "$val"
+   }
+   local item="$1" table key ref val
+   test "${item/(/}" = "${item}" && { echo "$item"; return 0; }
+   servicetype="${item/(*)/}"
+   case "$servicetype" in
+      "service"|"dservice") table="services" ;;
+      "host") table="hosts" ;;
+      "hosts") table="hosts" ;;
+      "network") table="networks" ;;
+   esac
+   key="${item/*(/}"
+   key="${key/)/}"
+   ref="${table}[$key]"
+   test "$table" != "hosts" -a -z "${!ref}" && error "Could not lookup ${item}."
+   val="${!ref}"
+   case "$table" in
+   "services")
+      case "$servicetype" in
+      "service") echo "${val/\/*/}" ;;
+      "dservice") echo "-p ${val/*\//} --dport ${val/\/*/}" ;;
+      esac
+   ;;
+   "hosts")
+      case "$servicetype" in
+      "host") dbhostlookup "$key" "$val" ;;
+      "hosts") for host in ${key//,/ }; do
+                  hostlist="$hostlist,$(dbhostlookup "$host" "")"
+               done
+               echo "${hostlist:1}"
+      ;;
+      esac
+      #t="A"
+      #test "$proto" = "6" && t="AAAA"
+      #test "$val" != "" && { echo "$val"; return; }
+      #val="$( dig +short +search "$key" "$t" | tail -1)"
+      #test "$val" = "" && error "Could not host lookup ${key}"
+      #echo "$val"
+   ;;
+   "networks")
+      test "$val" != "" && { echo "$val"; return; }
+      test "$val" = "" && error "Could not network lookup ${key}"
+   ;;
+   esac
+}
+
+# Process rules
+declare -A tables=([4]="log filter nat mangle log4 filter4 nat4 mangle4"
+                   [6]="log6 filter6 nat6 mangle6" )
+
+logging=0
+for section in "${sections[@]}"; do
+   for proto in "${protos[@]}"; do
+      for table in ${tables[$proto]}; do
+         for sectionref in $(eval "printf \"%s\n\" \${!$table[@]}" | sort); do
+            test "${sectionref/*\%/}" != "$section" && continue
+            ref="${table}[$sectionref]"
+            if test -n "${!ref}"; then
+               rule=""
+               line="${!ref}"
+               for item in $line; do
+                  if test "${item/:/}" = "${item}"; then
+                     rule="$rule $(dblookup "$item")"
+                  else
+                     rule="$rule $(dblookup "${item/:*/}"):$(dblookup "${item/*:/}")"
+                  fi
+               done
+               if test "$table" != "${table/log/}"; then
+                  logging=1
+                  table="${table/log/filter}"
+                  genrule $proto ${table/[46]/} "${rule/ /} -m comment --comment \"${section//_/ }\" -j NFLOG --nflog-prefix \"${section//_/ }\""
+               else
+                  genrule $proto ${table/[46]/} "${rule/ /} -m comment --comment \"${section//_/ }\""
+               fi
+            fi
+         done
+      done
+   done
+done
+
+# Set policy, default = accept
+policy="${global[policy]:-accept}"
+for proto in "${protos[@]}"; do
+   for chain in input output forward; do
+      chainpolicy="${global[policy_$chain]:-$policy}"
+      genrule $proto filter "-P ${chain^^} ${chainpolicy^^}"
+   done
+done
+
+export CDIST_ORDER_DEPENDENCY=1
+
+# Generate ip[6]tables-restore files
+for proto in "${protos[@]}"; do
+   for table in filter mangle nat; do
+      if test -e "${rules}-${proto}-${table}"; then
+         ( echo "*${table}"
+           cat "${rules}-${proto}-${table}"
+           rm -f "${rules}-${proto}-${table}"
+           echo "COMMIT"
+         ) >> "${rules}-${proto}"
+      fi
+   done
+   test -e "${rules}-${proto}" && __file /etc/firewall-ipv${proto}.fw \
+      --owner root --group root --mode 0400 --source - < "${rules}-${proto}"
+done
+if test -e "${rules}-4" -o -e "${rules}-6"; then
+   __package iptables
+   __file /usr/local/bin/firewall \
+      --owner root --group root --mode 0700 --source "${__type}/files/firewall"
+   __systemd_unit firewall.service \
+      --source "${__type}/files/firewall.service" \
+      --enablement-state enabled
+   __check_messages firewall \
+      --pattern '^__file/etc/firewall-ipv' \
+      --execute "systemctl restart firewall"
+   rm -f "${rules}"-*
+fi
+if test "$logging" = 0; then
+   __package ulogd2 --state absent
+else
+   __package ulogd2 --state present
+fi
+unset CDIST_ORDER_DEPENDENCY
