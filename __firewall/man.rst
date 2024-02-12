@@ -25,10 +25,18 @@ onchange
    The code to run if the key or value changes (i.e. is inserted, removed or replaced).
 db
    File containing definitions of services, hosts, networks etc.
+includedir
+   Directory containing files that can be included.
 
 RULES FILE
 ----------
-The rules file is in ini style format. There are 2 types of sections.
+The rules file is in ini style format. There are 3 types of sections.
+
+The first section is a pseudo section name. When the section name starts with a # it is
+considered a request to include the contents of a file. The text following the # will
+be the filename.
+This requires the includedir option to be specified as it will look for the name in that
+directory.
 
 The global section is reserved:
    [global]
@@ -71,6 +79,7 @@ iptables syntax (see examples). There are some supporting functions available wi
 
 * host()
 * hosts()
+* network()
 * service()
 * dservice()
 
@@ -81,6 +90,10 @@ host()
 
 hosts()
    The hosts() function is comparable to host() but will do this for each comma seperated host.
+
+network()
+   The network() function will expand the network name passwd to a subnet. This will be looked up
+   in the database file.
 
 service()
    The name of a specific service will be expanded to the definition found in the database
@@ -113,7 +126,7 @@ EXAMPLES
 .. code-block:: sh
 
     # Install the policy described in the file
-    __firewall --db /rulesets/db --rules /rulesets/systename.example.com
+    __firewall --db /rulesets/db --includedir /rulesets/include --rules /rulesets/systename.example.com
 
 Example configuration file for '/rulesets/systemname.example.com':
    [global]
@@ -121,6 +134,8 @@ Example configuration file for '/rulesets/systemname.example.com':
    established=true
    icmp=true
    proto=4,6
+
+   [#default_rules]
    
    [allow http from proxy, workstations and internal network]
    filter=-A INPUT -s host(proxy) dservice(http) -j ACCEPT
@@ -132,15 +147,21 @@ Example configuration file for '/rulesets/systemname.example.com':
    filter=-A INPUT dservice(http) -j DROP
    filter6=-A INPUT dservice(http) -j DROP
 
+Example of the included file for '/rulesets/include/default_rules':
+   [allow ssh from admin network]
+   filter=-A INPUT -s network(admin) dservice(ssh) -j ACCEPT
+
 Example of the database file for '/rulesets/db':
    [services]
    http=80/tcp
+   ssh=22/tcp
 
    [hosts]
    proxy=10.30.20.20
 
    [networks]
    internal=192.168.1.0/24
+   admin=192.168.2.0/24
 
 MORE INFORMATION
 ----------------
