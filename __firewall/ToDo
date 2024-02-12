@@ -22,5 +22,5 @@ v allow for firewall disable on client side
 v allow policy per chain
 v include option in policy files
 * debug logging option
-* absent state toevoegen
+v absent state toevoegen
 x policy reject -> only accept/drop

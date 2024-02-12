@@ -21,8 +21,8 @@ rules
 
 OPTIONAL PARAMETERS
 -------------------
-onchange
-   The code to run if the key or value changes (i.e. is inserted, removed or replaced).
+state
+   State can either be present or absent. If not specified defaults to present.
 db
    File containing definitions of services, hosts, networks etc.
 includedir

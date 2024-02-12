@@ -6,6 +6,7 @@ set -x
 set -e
 
 cfg="$(cat "$__object/parameter/rules")"
+state="$(cat "$__object/parameter/state")"
 test -f "$__object/parameter/db" && db="$(cat "$__object/parameter/db")"
 test -f "$__object/parameter/includedir" && includedir="$(cat "$__object/parameter/includedir")"
 
@@ -66,6 +67,16 @@ genrule() {
    rul="$2"
    echo "$3" >> "${rules}-${ipv}-${rul}"
 }
+
+if test "$state" = "absent"; then
+   __systemd_unit firewall.service --state absent
+   require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
+   require="__systemd_unit/firewall.service" __package ulogd2 --state absent
+   require="__systemd_unit/firewall.service" __package iptables --state absent
+   require="__systemd_unit/firewall.service" __file /etc/firewall-ipv4.fw --state absent
+   require="__systemd_unit/firewall.service" __file /etc/firewall-ipv6.fw --state absent
+   exit 0
+fi
 
 readconfig "$cfg"
 test -n "$db" && readdb "$db"
@@ -222,7 +233,7 @@ if test -e "${rules}-4" -o -e "${rules}-6"; then
       --enablement-state enabled
    __check_messages firewall \
       --pattern '^__file/etc/firewall-ipv' \
-      --execute "systemctl restart firewall"
+      --execute "systemctl restart firewall.service"
    rm -f "${rules}"-*
 fi
 if test "$logging" = 0; then
