@@ -120,6 +120,17 @@ hosts
 networks
    Alias for the network with netmask.
 
+CLIENT SIDE
+-----------
+
+On the client a systemd service is installed to control the loading/unloading of the firewall
+rules that have been generated. Default the service will be enabled so it is loaded after a
+start of the system. It can be manually controlled:
+
+    systemctl stop firewall
+
+The stop will flush all rules and allow all access.
+
 EXAMPLES
 --------
 

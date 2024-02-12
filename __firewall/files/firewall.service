@@ -3,7 +3,10 @@ Description=firewall
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/firewall
+Type=simple
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/firewall start
+ExecStop=/usr/local/bin/firewall stop
 
 [Install]
 WantedBy=network-online.target

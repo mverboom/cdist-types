@@ -1,5 +1,18 @@
 #!/bin/bash
 
-test -e /etc/firewall-ipv4.fw && iptables-restore /etc/firewall-ipv4.fw
-test -e /etc/firewall-ipv6.fw && ip6tables-restore /etc/firewall-ipv6.fw
+POLV4=/etc/firewall-ipv4.fw
+POLV6=/etc/firewall-ipv6.fw
+
+case "$1" in
+"start")
+   test -e "$POLV4" && iptables-restore "$POLV4"
+   test -e "$POLV6" && iptables-restore "$POLV6"
+   ;;
+"stop")
+   for chain in INPUT FORWARD OUTPUT; do
+      test -e "$POLV4" && { iptables -P "$chain" ACCEPT; iptables -F "$chain"; }
+      test -e "$POLV6" && { iptables -P "$chain" ACCEPT; iptables -F "$chain"; }
+   done
+   ;;
+esac
 exit 0
