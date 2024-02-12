@@ -22,3 +22,5 @@ v implement networks expansion
 * allow policy per chain
 * include option in policy files
 * debug logging option
+* absent state toevoegen
+* policy reject

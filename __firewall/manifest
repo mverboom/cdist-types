@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#exec > /tmp/firewall.log 2>&1
-#set -x
+exec > /tmp/firewall.log 2>&1
+set -x
 
 set -e
 
@@ -27,7 +27,7 @@ readdb() {
 }
 
 readconfig() {
-   local var val section tables=" filter nat mangle log filter4 nat4 mangle4 log4 filter6 nat6 mangle6 log6 "
+   local var varstrip val section cfgfile tables=" filter nat mangle log filter4 nat4 mangle4 log4 filter6 nat6 mangle6 log6 "
    local globalkeys=" policy established icmp proto "
 
    sections=()
@@ -35,15 +35,24 @@ readconfig() {
       if [[ $var == \[*] ]]; then
           section="${var:1:-1}"
           section="${section// /_}"
-          test "$section" != "global" && sections+=( "$section" )
+          if test "$section" != "global";then
+             if test "${section:0:1}" = "#"; then
+		cfgfile="${section:1}"
+		! test -e "${includedir}/${cfgfile}" && error "Unable to file include file $cfgfile"
+		readconfig "${includedir}/${cfgfile}"
+	     else
+	        sections+=( "$section" )
+	     fi
+	  fi
           itemcount=1
       elif [[ $val ]]; then
           if test "$section" = "global"; then
-             test "${globalkeys/$var/}" = "${globalkeys}" && 
+	     varstrip="${var/_*/}"
+             test "${globalkeys/$varstrip/}" = "${globalkeys}" &&
                 error "Unknown key ${var} in section global."
              declare -g -A "$section[$var]=$val"
           else
-             test "${tables/$var/}" = "${tables}" && 
+             test "${tables/$var/}" = "${tables}" &&
                 error "Unknown table ${var} in section $section."
              declare -g -A "$var[${itemcount}%${section}]=$val"
              itemcount=$(( itemcount + 1 ))
