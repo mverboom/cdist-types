@@ -7,6 +7,7 @@ set -e
 
 cfg="$(cat "$__object/parameter/rules")"
 test -f "$__object/parameter/db" && db="$(cat "$__object/parameter/db")"
+test -f "$__object/parameter/includedir" && includedir="$(cat "$__object/parameter/includedir")"
 
 error() {
    ( >&2 "Error: $1" )

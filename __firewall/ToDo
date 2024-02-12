@@ -18,3 +18,7 @@ v implement networks expansion
 * verify required commands: dig?
 * cleanup
 * single rule type for both ipv4 and ipv6
+* allow for firewall disable on client side
+* allow policy per chain
+* include option in policy files
+* debug logging option

@@ -38,6 +38,9 @@ policy
    Can either be 'accept' or 'drop'. This will be the default policy for input, output and
    forward chain. If not defined will default to accept.
 
+policy_<chain>
+   Overrule policy for a specific chain. When not defined will fallback to value of policy.
+
 established
    When defined as 'true' will generate a rule to allow incoming packets that are releated
    to established connections. Otherwise no rule will be generated.
