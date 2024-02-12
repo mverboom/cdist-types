@@ -191,6 +191,8 @@ policy="${global[policy]:-accept}"
 for proto in "${protos[@]}"; do
    for chain in input output forward; do
       chainpolicy="${global[policy_$chain]:-$policy}"
+      test "${chainpolicy^^}" != "ACCEPT" -o "${chainpolicy^^}" != "DROP" &&
+         error "Policy for chain can only be accept or drop."
       genrule $proto filter "-P ${chain^^} ${chainpolicy^^}"
    done
 done
