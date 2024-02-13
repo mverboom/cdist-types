@@ -6,12 +6,12 @@ POLV6=/etc/firewall-ipv6.fw
 case "$1" in
 "start")
    test -e "$POLV4" && iptables-restore "$POLV4"
-   test -e "$POLV6" && iptables-restore "$POLV6"
+   test -e "$POLV6" && ip6tables-restore "$POLV6"
    ;;
 "stop")
    for chain in INPUT FORWARD OUTPUT; do
       test -e "$POLV4" && { iptables -P "$chain" ACCEPT; iptables -F "$chain"; }
-      test -e "$POLV6" && { iptables -P "$chain" ACCEPT; iptables -F "$chain"; }
+      test -e "$POLV6" && { ip6tables -P "$chain" ACCEPT; ip6tables -F "$chain"; }
    done
    ;;
 esac
