@@ -1,9 +1,14 @@
 #!/bin/bash
 
-exec > /tmp/firewall.log 2>&1
-set -x
+#exec > /tmp/firewall.log 2>&1
+#set -x
 
 set -e
+
+cmds=( "dig" )
+for cmd in "${cmds[@]}"; do
+   type "$cmd" > /dev/null 2>&1 || error "Missing command $cmd"
+done
 
 cfg="$(cat "$__object/parameter/rules")"
 state="$(cat "$__object/parameter/state")"

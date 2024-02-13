@@ -21,8 +21,8 @@ v include option in policy files
 v absent state toevoegen
 x policy reject -> only accept/drop support in iptables
 v macro reject tcp-reject -j REJECT --reject-with tcp-reset
+v verify required commands: dig?
 * option to exclude comments
-* verify required commands: dig?
 * cleanup
 * single rule type for both ipv4 and ipv6
 * debug logging option
