@@ -34,7 +34,7 @@ readdb() {
 
 readconfig() {
    local var varstrip val section cfgfile tables=" filter nat mangle log filter4 nat4 mangle4 log4 filter6 nat6 mangle6 log6 "
-   local globalkeys=" policy established icmp proto "
+   local globalkeys=" policy established icmp proto log "
 
    while IFS='=' read var val; do
       if [[ $var == \[*] ]]; then
@@ -214,7 +214,13 @@ test "${global[icmp]}" = "true" &&
       genrule $proto filter "-A INPUT -p icmp -j ACCEPT -m comment --comment \"Allow icmp\""
    done
 
-# Set policy, default = accept
+
+test -n "${global[log]}" &&
+   for proto in "${protos[@]}"; do
+      genrule $proto filter "-A INPUT -p icmp -j ACCEPT -m comment --comment \"Allow icmp\""
+   done
+
+# Set policy, default = accept and set any logging
 policy="${global[policy]:-accept}"
 for proto in "${protos[@]}"; do
    for chain in input output forward; do
@@ -222,6 +228,10 @@ for proto in "${protos[@]}"; do
       test "${chainpolicy^^}" != "ACCEPT" -a "${chainpolicy^^}" != "DROP" &&
          error "Policy for chain can only be accept or drop."
       genrule $proto filter "-P ${chain^^} ${chainpolicy^^}"
+      test -n "${global[log]}" && {
+         genrule $proto filter "-A ${chain^^} -j NFLOG --nflog-prefix \"${global[log]}\""
+         logging=1
+      }
    done
 done
 

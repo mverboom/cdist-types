@@ -62,6 +62,10 @@ proto
    processed. When IPv4 and IPv6 rules are available but proto is set to 4, only IPv4 rules
    will be generated. When not defined it will default to '4'.
 
+log
+   When this option is set, it will add a log entry to the end of the input, forward and
+   output chain. The logging prefix will be the value of this option.
+
 Any other section header will be used as a description to group rules together. The description
 will be used as comments for rules generated in the section. The defined rules of a specific type
 will be generated in the order they are in (when multiple are defined in a section). The types
@@ -152,6 +156,7 @@ Example configuration file for '/rulesets/systemname.example.com':
    established=true
    icmp=true
    proto=4,6
+   log=Unmatched traffic
 
    [#default_rules]
    
