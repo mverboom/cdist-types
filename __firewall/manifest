@@ -68,45 +68,6 @@ genrule() {
    echo "$3" >> "${rules}-${ipv}-${rul}"
 }
 
-if test "$state" = "absent"; then
-   __systemd_unit firewall.service --state absent
-   require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
-   require="__systemd_unit/firewall.service" __package ulogd2 --state absent
-   require="__systemd_unit/firewall.service" __package iptables --state absent
-   require="__systemd_unit/firewall.service" __file /etc/firewall-ipv4.fw --state absent
-   require="__systemd_unit/firewall.service" __file /etc/firewall-ipv6.fw --state absent
-   exit 0
-fi
-
-readconfig "$cfg"
-test -n "$db" && readdb "$db"
-
-rules="$(mktemp)"
-rm -f "$rules"
-
-test "${global[proto]}" = "" && protos=( 4 )
-test "${global[proto]/4/}" != "${global[proto]}" && protos+=( 4 )
-test "${global[proto]/6/}" != "${global[proto]}" && protos+=( 6 )
-
-# Flush any rules before installing
-for proto in "${protos[@]}"; do
-   for chain in INPUT OUTPUT FORWARD; do
-      genrule $proto filter "-F $chain"
-   done
-done
-
-# Allow related and established
-test "${global[established]}" = "true" &&
-   for proto in "${protos[@]}"; do
-      genrule $proto filter "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT"
-   done
-
-# Always allow icmp
-test "${global[icmp]}" = "true" &&
-   for proto in "${protos[@]}"; do
-      genrule $proto filter "-I INPUT -p icmp -j ACCEPT"
-   done
-
 dblookup() {
    dbhostlookup() {
       local key val t
@@ -163,6 +124,46 @@ dblookup() {
    esac
 }
 
+
+if test "$state" = "absent"; then
+   __systemd_unit firewall.service --state absent
+   require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
+   require="__systemd_unit/firewall.service" __package ulogd2 --state absent
+   require="__systemd_unit/firewall.service" __package iptables --state absent
+   require="__systemd_unit/firewall.service" __file /etc/firewall-ipv4.fw --state absent
+   require="__systemd_unit/firewall.service" __file /etc/firewall-ipv6.fw --state absent
+   exit 0
+fi
+
+readconfig "$cfg"
+test -n "$db" && readdb "$db"
+
+rules="$(mktemp)"
+rm -f "$rules"
+
+test "${global[proto]}" = "" && protos=( 4 )
+test "${global[proto]/4/}" != "${global[proto]}" && protos+=( 4 )
+test "${global[proto]/6/}" != "${global[proto]}" && protos+=( 6 )
+
+# Flush any rules before installing
+for proto in "${protos[@]}"; do
+   for chain in INPUT OUTPUT FORWARD; do
+      genrule $proto filter "-F $chain"
+   done
+done
+
+# Allow related and established
+test "${global[established]}" = "true" &&
+   for proto in "${protos[@]}"; do
+      genrule $proto filter "-A INPUT -m state --state RELATED,ESTABLISHED -m comment --comment \"Allow related and established\" -j ACCEPT"
+   done
+
+# Always block icmp at top of ruleset
+test "${global[icmp]}" = "false" &&
+   for proto in "${protos[@]}"; do
+      genrule $proto filter "-A INPUT -p icmp -j DROP -m comment --comment \"Drop icmp\""
+   done
+
 # Process rules
 declare -A tables=([4]="log filter nat mangle log4 filter4 nat4 mangle4"
                    [6]="log6 filter6 nat6 mangle6" )
@@ -196,6 +197,12 @@ for section in "${sections[@]}"; do
       done
    done
 done
+
+# Always allow icmp at bottom of ruleset
+test "${global[icmp]}" = "true" &&
+   for proto in "${protos[@]}"; do
+      genrule $proto filter "-A INPUT -p icmp -j ACCEPT -m comment --comment \"Allow icmp\""
+   done
 
 # Set policy, default = accept
 policy="${global[policy]:-accept}"
