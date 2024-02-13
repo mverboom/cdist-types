@@ -82,6 +82,7 @@ iptables syntax (see examples). There are some supporting functions available wi
 * network()
 * service()
 * dservice()
+* reject()
 
 host()
    The host() function will expand the hostname passed to the relevant IPv4 or IPv6 address.
@@ -102,6 +103,12 @@ service()
 dservice()
    The name of a specific service will be expanded to a specific rule for the transport and
    the destination port number.
+
+reject()
+   This expands to the -j REJECT. The argument to the option can be:
+   reset: Sends a tcp reset on reject
+   unreachable: Sends an icmp unreachable on reject
+   probibited: Sends an icmp admin prohibited on reject
 
 DATABASE FILE
 -------------

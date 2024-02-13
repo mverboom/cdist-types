@@ -67,7 +67,7 @@ genrule() {
    echo "$3" >> "${rules}-${ipv}-${rul}"
 }
 
-dblookup() {
+lookup() {
    dbhostlookup() {
       local key val t
       key="$1"
@@ -79,29 +79,41 @@ dblookup() {
       test "$val" = "" && error "Could not host lookup ${key}"
       echo "$val"
    }
-   local item="$1" table key ref val
+
+   local item="$1" functiontype args lookuptable key ref val
    test "${item/(/}" = "${item}" && { echo "$item"; return 0; }
-   servicetype="${item/(*)/}"
-   case "$servicetype" in
-      "service"|"dservice") table="services" ;;
-      "host") table="hosts" ;;
-      "hosts") table="hosts" ;;
-      "network") table="networks" ;;
+   functiontype="${item/(*)/}"
+   args="${item/*(/}"
+   args="${args/)/}"
+   case "$functiontype" in
+      "service"|"dservice") lookuptable="services" ;;
+      "host") lookuptable="hosts" ;;
+      "hosts") lookuptable="hosts" ;;
+      "network") lookuptable="networks" ;;
+      "reject")
+         case "$args" in
+            "reset") echo "-j REJECT --reject-with tcp-reset" ;;
+            "unreachable") echo "-j REJECT --reject-with icmp-port-unreachable" ;;
+            "prohibited") echo "-j REJECT --reject-with icmp-admin-prohibited" ;;
+            *) error "Unknown reject type $args" ;;
+         esac
    esac
+   test "$lookuptable" = "" && return
+   # Process lookups
    key="${item/*(/}"
    key="${key/)/}"
-   ref="${table}[$key]"
-   test "$table" != "hosts" -a -z "${!ref}" && error "Could not lookup ${item}."
+   ref="${lookuptable}[$key]"
+   test "$lookuptable" != "hosts" -a -z "${!ref}" && error "Could not lookup ${item}."
    val="${!ref}"
-   case "$table" in
+   case "$lookuptable" in
    "services")
-      case "$servicetype" in
-      "service") echo "${val/\/*/}" ;;
-      "dservice") echo "-p ${val/*\//} --dport ${val/\/*/}" ;;
+      case "$functiontype" in
+         "service") echo "${val/\/*/}" ;;
+         "dservice") echo "-p ${val/*\//} --dport ${val/\/*/}" ;;
       esac
    ;;
    "hosts")
-      case "$servicetype" in
+      case "$functiontype" in
       "host") dbhostlookup "$key" "$val" ;;
       "hosts") for host in ${key//,/ }; do
                   hostlist="$hostlist,$(dbhostlookup "$host" "")"
@@ -109,12 +121,6 @@ dblookup() {
                echo "${hostlist:1}"
       ;;
       esac
-      #t="A"
-      #test "$proto" = "6" && t="AAAA"
-      #test "$val" != "" && { echo "$val"; return; }
-      #val="$( dig +short +search "$key" "$t" | tail -1)"
-      #test "$val" = "" && error "Could not host lookup ${key}"
-      #echo "$val"
    ;;
    "networks")
       test "$val" != "" && { echo "$val"; return; }
@@ -122,7 +128,6 @@ dblookup() {
    ;;
    esac
 }
-
 
 if test "$state" = "absent"; then
    __systemd_unit firewall.service --state absent
@@ -180,9 +185,9 @@ for section in "${sections[@]}"; do
                line="${!ref}"
                for item in $line; do
                   if test "${item/:/}" = "${item}"; then
-                     rule="$rule $(dblookup "$item")"
+                     rule="$rule $(lookup "$item")"
                   else
-                     rule="$rule $(dblookup "${item/:*/}"):$(dblookup "${item/*:/}")"
+                     rule="$rule $(lookup "${item/:*/}"):$(lookup "${item/*:/}")"
                   fi
                done
                if test "$table" != "${table/log/}"; then
