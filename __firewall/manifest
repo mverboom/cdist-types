@@ -31,7 +31,6 @@ readconfig() {
    local var varstrip val section cfgfile tables=" filter nat mangle log filter4 nat4 mangle4 log4 filter6 nat6 mangle6 log6 "
    local globalkeys=" policy established icmp proto "
 
-   sections=()
    while IFS='=' read var val; do
       if [[ $var == \[*] ]]; then
           section="${var:1:-1}"
@@ -135,6 +134,7 @@ if test "$state" = "absent"; then
    exit 0
 fi
 
+sections=()
 readconfig "$cfg"
 test -n "$db" && readdb "$db"
 
