@@ -14,13 +14,16 @@ v documentation
 v abort on error
 v multiple same items under single heading
 v implement networks expansion
+v multiple includes/rule overwrite with includes
+v allow for firewall disable on client side
+v allow policy per chain
+v include option in policy files
+v absent state toevoegen
+x policy reject -> only accept/drop support in iptables
 * option to exclude comments
 * verify required commands: dig?
 * cleanup
 * single rule type for both ipv4 and ipv6
-v allow for firewall disable on client side
-v allow policy per chain
-v include option in policy files
 * debug logging option
-v absent state toevoegen
-x policy reject -> only accept/drop
+* macro reject tcp-reject -j REJECT --reject-with tcp-reset
+* marco log any remaining packets?
