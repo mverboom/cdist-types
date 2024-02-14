@@ -22,8 +22,9 @@ v absent state toevoegen
 x policy reject -> only accept/drop support in iptables
 v macro reject tcp-reject -j REJECT --reject-with tcp-reset
 v verify required commands: dig?
+v marco log any remaining packets?
+v global logging per chain
 * option to exclude comments
 * cleanup
 * single rule type for both ipv4 and ipv6
 * debug logging option
-* marco log any remaining packets?

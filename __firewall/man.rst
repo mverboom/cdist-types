@@ -77,7 +77,6 @@ are applied in a specific order. The types recognized are:
 * filter
 * nat
 * mangle
-* log
 
 When defined they default to IPv4 based rules. They can be postfixed by either 4 or 6 to make
 them specific for that protocol version.
@@ -90,6 +89,7 @@ iptables syntax (see examples). There are some supporting functions available wi
 * service()
 * dservice()
 * reject()
+* log()
 
 host()
    The host() function will expand the hostname passed to the relevant IPv4 or IPv6 address.
@@ -116,6 +116,10 @@ reject()
    reset: Sends a tcp reset on reject
    unreachable: Sends an icmp unreachable on reject
    probibited: Sends an icmp admin prohibited on reject
+
+log()
+   This expands to the required options to jump to the log target. The value passed
+   is used as the prefix for the log line.
 
 DATABASE FILE
 -------------
@@ -165,9 +169,9 @@ Example configuration file for '/rulesets/systemname.example.com':
    
    [allow http from proxy, workstations and internal network]
    filter=-A INPUT -s host(proxy) dservice(http) -j ACCEPT
-   filter=-A INPUT -s host(workstation1) dservice(http) -j ACCEPT
-   filter=-A INPUT -s host(workstation2) dservice(http) -j ACCEPT
+   filter=-A INPUT -s hosts(workstation1,workstation2) dservice(http) -j ACCEPT
    filter=-A INPUT -s network(internal) dservice(http) -j ACCEPT
+   filter=-A INPUT dservice(http) log(system accessing http)
 
    [drop http from other sources]
    filter=-A INPUT dservice(http) -j DROP

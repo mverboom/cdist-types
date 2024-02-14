@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#exec > /tmp/firewall.log 2>&1
-#set -x
+exec > /tmp/firewall.log 2>&1
+set -x
 
 set -e
 
@@ -33,7 +33,7 @@ readdb() {
 }
 
 readconfig() {
-   local var varstrip val section cfgfile tables=" filter nat mangle log filter4 nat4 mangle4 log4 filter6 nat6 mangle6 log6 "
+   local var varstrip val section cfgfile tables=" filter nat mangle filter4 nat4 mangle4 filter6 nat6 mangle6"
    local globalkeys=" policy established icmp proto log "
 
    while IFS='=' read var val; do
@@ -72,68 +72,55 @@ genrule() {
    echo "$3" >> "${rules}-${ipv}-${rul}"
 }
 
-lookup() {
-   dbhostlookup() {
-      local key val t
+doexpand() {
+   hostlookup() {
+      local key val
       key="$1"
-      val="$2"
       t="A"
       test "$proto" = "6" && t="AAAA"
+
+      val="${hosts[$key]}"
       test "$val" != "" && { echo "$val"; return; }
       val="$( dig +short +search "$key" "$t" | tail -1)"
-      test "$val" = "" && error "Could not host lookup ${key}"
+      test "$val" = "" && error "Could not find host ${key}"
       echo "$val"
    }
 
-   local item="$1" functiontype args lookuptable key ref val
+   expanded="$1"
+   local item="$1" functiontype args lookuptable
    test "${item/(/}" = "${item}" && { echo "$item"; return 0; }
    functiontype="${item/(*)/}"
    args="${item/*(/}"
    args="${args/)/}"
    case "$functiontype" in
-      "service"|"dservice") lookuptable="services" ;;
-      "host") lookuptable="hosts" ;;
-      "hosts") lookuptable="hosts" ;;
-      "network") lookuptable="networks" ;;
       "reject")
          case "$args" in
-            "reset") echo "-j REJECT --reject-with tcp-reset" ;;
-            "unreachable") echo "-j REJECT --reject-with icmp-port-unreachable" ;;
-            "prohibited") echo "-j REJECT --reject-with icmp-admin-prohibited" ;;
+            "reset") expanded="-j REJECT --reject-with tcp-reset" ;;
+            "unreachable") expanded="-j REJECT --reject-with icmp-port-unreachable" ;;
+            "prohibited") expanded="-j REJECT --reject-with icmp-admin-prohibited" ;;
             *) error "Unknown reject type $args" ;;
-         esac
-   esac
-   test "$lookuptable" = "" && return
-   # Process lookups
-   key="${item/*(/}"
-   key="${key/)/}"
-   ref="${lookuptable}[$key]"
-   test "$lookuptable" != "hosts" -a -z "${!ref}" && error "Could not lookup ${item}."
-   val="${!ref}"
-   case "$lookuptable" in
-   "services")
-      case "$functiontype" in
-         "service") echo "${val/\/*/}" ;;
-         "dservice") echo "-p ${val/*\//} --dport ${val/\/*/}" ;;
-      esac
-   ;;
-   "hosts")
-      case "$functiontype" in
-      "host") dbhostlookup "$key" "$val" ;;
-      "hosts") for host in ${key//,/ }; do
-                  hostlist="$hostlist,$(dbhostlookup "$host" "")"
-               done
-               echo "${hostlist:1}"
-      ;;
-      esac
-   ;;
-   "networks")
-      test "$val" != "" && { echo "$val"; return; }
-      test "$val" = "" && error "Could not network lookup ${key}"
-   ;;
+         esac ;;
+      "log") expanded="-j NFLOG --nflog-prefix \"${args//%/ }\""; logging=1 ;;
+      "service")
+         test ${services[$args]} = "" && error "Service port $args not found."
+         expanded="${services[$args]/\/*/}" ;;
+      "dservice")
+         test ${services[$args]} = "" && error "Destination service $args not found."
+         expanded="-p ${services[$args]/*\//} --dport ${services[$args]/\/*/}" ;;
+      "host")
+         expanded="$(hostlookup "$args")" ;;
+      "hosts")
+         for host in ${args//,/ }; do
+            expanded="$expanded,$(hostlookup "$host")"
+         done
+         expanded="${expanded:1}" ;;
+      "network")
+         test ${networks[$args]} = "" && error "Network $args not found."
+         expanded="${networks[$args]/\/*/}" ;;
    esac
 }
 
+# Process absent state
 if test "$state" = "absent"; then
    __systemd_unit firewall.service --state absent
    require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
@@ -187,21 +174,19 @@ for section in "${sections[@]}"; do
             ref="${table}[$sectionref]"
             if test -n "${!ref}"; then
                rule=""
-               line="${!ref}"
+               line="$( echo "${!ref}" | sed ':l s/\(([^ )]*\)[ ]/\1%/;tl' )"
                for item in $line; do
                   if test "${item/:/}" = "${item}"; then
-                     rule="$rule $(lookup "$item")"
+                     doexpand "$item"
+                     rule="$rule $expanded"
                   else
-                     rule="$rule $(lookup "${item/:*/}"):$(lookup "${item/*:/}")"
+                     doexpand "${item/:*/}"
+                     rule="${rule} ${expanded}"
+                     doexpand "${item/*:/}"
+                     rule="${rule}:${expanded}"
                   fi
                done
-               if test "$table" != "${table/log/}"; then
-                  logging=1
-                  table="${table/log/filter}"
-                  genrule $proto ${table/[46]/} "${rule/ /} -m comment --comment \"${section//_/ }\" -j NFLOG --nflog-prefix \"${section//_/ }\""
-               else
-                  genrule $proto ${table/[46]/} "${rule/ /} -m comment --comment \"${section//_/ }\""
-               fi
+               genrule $proto ${table/[46]/} "${rule/ /} -m comment --comment \"${section//_/ }\""
             fi
          done
       done
@@ -214,7 +199,7 @@ test "${global[icmp]}" = "true" &&
       genrule $proto filter "-A INPUT -p icmp -j ACCEPT -m comment --comment \"Allow icmp\""
    done
 
-
+# Setup logging
 test -n "${global[log]}" &&
    for proto in "${protos[@]}"; do
       genrule $proto filter "-A INPUT -p icmp -j ACCEPT -m comment --comment \"Allow icmp\""
@@ -253,6 +238,8 @@ for proto in "${protos[@]}"; do
    test -e "${rules}-${proto}" && __file /etc/firewall-ipv${proto}.fw \
       --owner root --group root --mode 0400 --source - < "${rules}-${proto}"
 done
+
+# Distribute restore files and install or remove software and service
 if test -e "${rules}-4" -o -e "${rules}-6"; then
    __package iptables
    __file /usr/local/bin/firewall \
