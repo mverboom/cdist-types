@@ -59,8 +59,7 @@ readconfig() {
           else
              test "${tables/$var/}" = "${tables}" &&
                 error "Unknown table ${var} in section $section."
-             counter=$(printf "%03d\n" $itemcount)
-             declare -g -A "$var[${counter}%${section}]=$val"
+             declare -g -A "$var[${itemcount}%${section}]=$val"
              itemcount=$(( itemcount + 1 ))
           fi
       fi
@@ -183,7 +182,7 @@ logging=0
 for section in "${sections[@]}"; do
    for proto in "${protos[@]}"; do
       for table in ${tables[$proto]}; do
-         for sectionref in $(eval "printf \"%s\n\" \${!$table[@]}" | sort); do
+         for sectionref in $(eval "printf \"%s\n\" \${!$table[@]}" | sort -t% -n); do
             test "${sectionref/*\%/}" != "$section" && continue
             ref="${table}[$sectionref]"
             if test -n "${!ref}"; then
