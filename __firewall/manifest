@@ -49,7 +49,7 @@ readconfig() {
 	        sections+=( "$section" )
 	     fi
 	  fi
-          itemcount=1
+          itemcount=001
       elif [[ $val ]]; then
           if test "$section" = "global"; then
 	     varstrip="${var/_*/}"
@@ -61,6 +61,7 @@ readconfig() {
                 error "Unknown table ${var} in section $section."
              declare -g -A "$var[${itemcount}%${section}]=$val"
              itemcount=$(( itemcount + 1 ))
+             itemcount=$(printf "%03d\n" $itemcount)
           fi
       fi
    done < <(grep -v "^#" "$1")
