@@ -228,8 +228,10 @@ for proto in "${protos[@]}"; do
       test "${chainpolicy^^}" != "ACCEPT" -a "${chainpolicy^^}" != "DROP" &&
          error "Policy for chain can only be accept or drop."
       genrule $proto filter "-P ${chain^^} ${chainpolicy^^}"
-      test -n "${global[log]}" && {
-         genrule $proto filter "-A ${chain^^} -j NFLOG --nflog-prefix \"${global[log]}\""
+      log="${global[log_$chain]}"
+      test -z "$log" && log="${global[log]}"
+      test -n "$log" && {
+         genrule $proto filter "-A ${chain^^} -j NFLOG --nflog-prefix \"$log\""
          logging=1
       }
    done
