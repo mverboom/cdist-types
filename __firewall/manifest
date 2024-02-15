@@ -10,11 +10,6 @@ for cmd in "${cmds[@]}"; do
    type "$cmd" > /dev/null 2>&1 || error "Missing command $cmd"
 done
 
-cfg="$(cat "$__object/parameter/rules")"
-state="$(cat "$__object/parameter/state")"
-test -f "$__object/parameter/db" && db="$(cat "$__object/parameter/db")"
-test -f "$__object/parameter/includedir" && includedir="$(cat "$__object/parameter/includedir")"
-
 error() {
    ( >&2 "Error: $1" )
    exit 1
@@ -120,16 +115,22 @@ doexpand() {
    esac
 }
 
+state="$(cat "$__object/parameter/state")"
+
 # Process absent state
 if test "$state" = "absent"; then
    __systemd_unit firewall.service --state absent
    require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
    require="__systemd_unit/firewall.service" __package ulogd2 --state absent
-   require="__systemd_unit/firewall.service" __package iptables --state absent
    require="__systemd_unit/firewall.service" __file /etc/firewall-ipv4.fw --state absent
    require="__systemd_unit/firewall.service" __file /etc/firewall-ipv6.fw --state absent
    exit 0
 fi
+
+test -f "$__object/parameters/cfg" || error "No rules specified."
+cfg="$(cat "$__object/parameter/rules")"
+test -f "$__object/parameter/db" && db="$(cat "$__object/parameter/db")"
+test -f "$__object/parameter/includedir" && includedir="$(cat "$__object/parameter/includedir")"
 
 sections=()
 readconfig "$cfg"

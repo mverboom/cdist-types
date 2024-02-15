@@ -28,3 +28,7 @@ v global logging per chain
 * cleanup
 * single rule type for both ipv4 and ipv6
 * debug logging option
+* global icmp function revisit
+  * location in ruleset depending on policy
+  * only allow specific icmp types for optimal tcp/udp
+* macro's for icmp matching?
