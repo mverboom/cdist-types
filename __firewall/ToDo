@@ -32,3 +32,4 @@ v global logging per chain
   * location in ruleset depending on policy
   * only allow specific icmp types for optimal tcp/udp
 * macro's for icmp matching?
+* default loopback allow for input,output,forward, make global to disable
