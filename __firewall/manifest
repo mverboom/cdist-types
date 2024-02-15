@@ -111,7 +111,7 @@ doexpand() {
          expanded="${expanded:1}" ;;
       "network")
          test ${networks[$args]} = "" && error "Network $args not found."
-         expanded="${networks[$args]/\/*/}" ;;
+         expanded="${networks[$args]}" ;;
    esac
 }
 
