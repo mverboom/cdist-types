@@ -127,7 +127,7 @@ if test "$state" = "absent"; then
    exit 0
 fi
 
-test -f "$__object/parameters/rules" || error "No rules specified."
+test -f "$__object/parameter/rules" || error "No rules specified."
 cfg="$(cat "$__object/parameter/rules")"
 test -f "$__object/parameter/db" && db="$(cat "$__object/parameter/db")"
 test -f "$__object/parameter/includedir" && includedir="$(cat "$__object/parameter/includedir")"
