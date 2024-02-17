@@ -24,7 +24,7 @@ readdb() {
 
 readconfig() {
    local var varstrip val section rulesfile tables=" filter nat mangle filter4 nat4 mangle4 filter6 nat6 mangle6"
-   local globalkeys=" policy established icmp proto log "
+   local globalkeys=" policy established icmp proto log loopback "
 
    while IFS='=' read var val; do
       if [[ $var == \[*] ]]; then
@@ -230,6 +230,12 @@ for proto in "${protos[@]}"; do
       test "${chainpolicy^^}" != "ACCEPT" -a "${chainpolicy^^}" != "DROP" &&
          error "Policy for chain can only be accept or drop."
       genrule $proto filter "-P ${chain^^} ${chainpolicy^^}"
+      if test "${chainpolicy^^}" = "DROP" -a "${global[loopback]}" != "false"; then
+         case "${chain^^}" in
+            "INPUT") genrule $proto filter "-I ${chain^^} -i lo -j ACCEPT" ;;
+            "OUTPUT") genrule $proto filter "-I ${chain^^} -o lo -j ACCEPT" ;;
+         esac
+      fi
       log="${global[log_$chain]}"
       test -z "$log" && log="${global[log]}"
       test -n "$log" && {

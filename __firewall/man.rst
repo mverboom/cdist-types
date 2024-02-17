@@ -49,6 +49,10 @@ policy
 policy_<chain>
    Overrule policy for a specific chain. When not defined will fallback to value of policy.
 
+loopback
+   When the policy is DROP for a chain, an automatic rule is generated to allow traffic for
+   the loopback interface. When interface is set to false, this rule is not generated.
+
 established
    When defined as 'true' will generate a rule to allow incoming packets that are releated
    to established connections. Otherwise no rule will be generated.
