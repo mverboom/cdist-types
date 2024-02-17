@@ -5,11 +5,6 @@ set -x
 
 set -e
 
-cmds=( "dig" )
-for cmd in "${cmds[@]}"; do
-   type "$cmd" > /dev/null 2>&1 || error "Missing command $cmd"
-done
-
 error() {
    ( >&2 "Error: $1" )
    exit 1
@@ -28,7 +23,7 @@ readdb() {
 }
 
 readconfig() {
-   local var varstrip val section cfgfile tables=" filter nat mangle filter4 nat4 mangle4 filter6 nat6 mangle6"
+   local var varstrip val section rulesfile tables=" filter nat mangle filter4 nat4 mangle4 filter6 nat6 mangle6"
    local globalkeys=" policy established icmp proto log "
 
    while IFS='=' read var val; do
@@ -37,9 +32,9 @@ readconfig() {
           section="${section// /_}"
           if test "$section" != "global";then
              if test "${section:0:1}" = "#"; then
-		cfgfile="${section:1}"
-		! test -e "${includedir}/${cfgfile}" && error "Unable to file include file $cfgfile"
-		readconfig "${includedir}/${cfgfile}"
+		rulesfile="${section:1}"
+		! test -e "${includedir}/${rulesfile}" && error "Unable to file include file $rulesfile"
+		readconfig "${includedir}/${rulesfile}"
 	     else
 	        sections+=( "$section" )
 	     fi
@@ -64,7 +59,7 @@ readconfig() {
 genrule() {
    ipv="$1"
    rul="$2"
-   echo "$3" >> "${rules}-${ipv}-${rul}"
+   echo "$3" >> "${rulesipt}-${ipv}-${rul}"
 }
 
 doexpand() {
@@ -115,6 +110,12 @@ doexpand() {
    esac
 }
 
+# Sanity check
+cmds=( "dig" )
+for cmd in "${cmds[@]}"; do
+   type "$cmd" > /dev/null 2>&1 || error "Missing command $cmd"
+done
+
 state="$(cat "$__object/parameter/state")"
 
 # Process absent state
@@ -128,16 +129,17 @@ if test "$state" = "absent"; then
 fi
 
 test -f "$__object/parameter/rules" || error "No rules specified."
-cfg="$(cat "$__object/parameter/rules")"
+rules="$(cat "$__object/parameter/rules")"
 test -f "$__object/parameter/db" && db="$(cat "$__object/parameter/db")"
 test -f "$__object/parameter/includedir" && includedir="$(cat "$__object/parameter/includedir")"
 
+# Read rules
 sections=()
-readconfig "$cfg"
+readconfig "$rules"
 test -n "$db" && readdb "$db"
 
-rules="$(mktemp)"
-rm -f "$rules"
+rulesipt="$(mktemp)"
+rm -f "$rulesipt"
 
 test "${global[proto]}" = "" && protos=( 4 )
 test "${global[proto]/4/}" != "${global[proto]}" && protos+=( 4 )
@@ -163,9 +165,8 @@ test "${global[icmp]}" = "false" &&
    done
 
 # Process rules
-declare -A tables=([4]="log filter nat mangle log4 filter4 nat4 mangle4"
-                   [6]="log6 filter6 nat6 mangle6" )
-
+declare -A tables=([4]="filter nat mangle filter4 nat4 mangle4"
+                   [6]="filter6 nat6 mangle6" )
 logging=0
 for section in "${sections[@]}"; do
    for proto in "${protos[@]}"; do
@@ -175,19 +176,17 @@ for section in "${sections[@]}"; do
             ref="${table}[$sectionref]"
             if test -n "${!ref}"; then
                rule=""
-               line="$( echo "${!ref}" | sed ':l s/\(([^ )]*\)[ ]/\1%/;tl' )"
-               for item in $line; do
-                  if test "${item/:/}" = "${item}"; then
-                     doexpand "$item"
-                     rule="$rule $expanded"
-                  else
-                     doexpand "${item/:*/}"
-                     rule="${rule} ${expanded}"
-                     doexpand "${item/*:/}"
-                     rule="${rule}:${expanded}"
-                  fi
+               line="${!ref}"
+               while test "${#line}" -gt 0; do
+                  expansion="$(echo "$line" | sed 's/\(^\|[^(]*[ .:-;]\)\([^( .:-;]\+([^)]\+)\).*/\2/; /.*[(].*/!d')"
+                  test "$expansion" = "" && { rule="${rule}${line}"; break; }
+                  rest=${line#*$expansion}
+                  pos=$(( ${#line} - ${#rest} - ${#expansion}))
+                  doexpand "${expansion}"
+                  rule="${rule}${line:0:$pos}${expanded}"
+                  line="${line:$(( pos + ${#expansion}))}"
                done
-               genrule $proto ${table/[46]/} "${rule/ /} -m comment --comment \"${section//_/ }\""
+               genrule $proto ${table/[46]/} "${rule} -m comment --comment \"${section//_/ }\""
             fi
          done
       done
@@ -228,20 +227,20 @@ export CDIST_ORDER_DEPENDENCY=1
 # Generate ip[6]tables-restore files
 for proto in "${protos[@]}"; do
    for table in filter mangle nat; do
-      if test -e "${rules}-${proto}-${table}"; then
+      if test -e "${rulesipt}-${proto}-${table}"; then
          ( echo "*${table}"
-           cat "${rules}-${proto}-${table}"
-           rm -f "${rules}-${proto}-${table}"
+           cat "${rulesipt}-${proto}-${table}"
+           rm -f "${rulesipt}-${proto}-${table}"
            echo "COMMIT"
-         ) >> "${rules}-${proto}"
+         ) >> "${rulesipt}-${proto}"
       fi
    done
-   test -e "${rules}-${proto}" && __file /etc/firewall-ipv${proto}.fw \
-      --owner root --group root --mode 0400 --source - < "${rules}-${proto}"
+   test -e "${rulesipt}-${proto}" && __file /etc/firewall-ipv${proto}.fw \
+      --owner root --group root --mode 0400 --source - < "${rulesipt}-${proto}"
 done
 
 # Distribute restore files and install or remove software and service
-if test -e "${rules}-4" -o -e "${rules}-6"; then
+if test -e "${rulesipt}-4" -o -e "${rulesipt}-6"; then
    __package iptables
    __file /usr/local/bin/firewall \
       --owner root --group root --mode 0700 --source "${__type}/files/firewall"
@@ -251,7 +250,7 @@ if test -e "${rules}-4" -o -e "${rules}-6"; then
    __check_messages firewall \
       --pattern '^__file/etc/firewall-ipv' \
       --execute "systemctl restart firewall.service"
-   rm -f "${rules}"-*
+   rm -f "${rulesipt}"-*
 fi
 if test "$logging" = 0; then
    __package ulogd2 --state absent
