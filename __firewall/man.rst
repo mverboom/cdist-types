@@ -99,9 +99,15 @@ host()
 hosts()
    The hosts() function is comparable to host() but will do this for each comma seperated host.
 
+hostgroup()
+   The hostgroup() function expands the host group into the ip adresses of all hosts assigned to the group.
+
 network()
    The network() function will expand the network name passwd to a subnet. This will be looked up
    in the database file.
+
+networkgroup()
+   The networkgroup() function expands the netowrk group into the ip adresses of all networks assigned to the group.
 
 service()
    The name of a specific service will be expanded to the definition found in the database
@@ -127,7 +133,9 @@ DATABASE FILE
 The optional database file can be used to store specific definitions of:
 * services
 * hosts
+* hostgroups
 * networks
+* networkgroups
 
 services
    Combinations of portnumber followed by either 'tcp' or 'udp'.
@@ -135,8 +143,14 @@ services
 hosts
    Alias for the IP address of the host.
 
+hostgroups
+   Alias for comma separated list of hosts.
+
 networks
    Alias for the network with netmask.
+
+networkgroups
+   Alias for comma separated list of networks.
 
 CLIENT SIDE
 -----------

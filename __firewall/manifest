@@ -11,7 +11,7 @@ error() {
 }
 
 readdb() {
-   declare -g -A services hosts networks
+   declare -g -A services hosts networks hostgroups networkgroups
 
    while IFS='=' read var val; do
       if [[ $var == \[*] ]]; then
@@ -92,21 +92,38 @@ doexpand() {
          esac ;;
       "log") expanded="-j NFLOG --nflog-prefix \"${args//%/ }\""; logging=1 ;;
       "service")
-         test ${services[$args]} = "" && error "Service port $args not found."
+         test "${services[$args]}" = "" && error "Service port $args not found."
          expanded="${services[$args]/\/*/}" ;;
       "dservice")
-         test ${services[$args]} = "" && error "Destination service $args not found."
+         test "${services[$args]}" = "" && error "Destination service $args not found."
          expanded="-p ${services[$args]/*\//} --dport ${services[$args]/\/*/}" ;;
       "host")
          expanded="$(hostlookup "$args")" ;;
       "hosts")
+         unset expanded
          for host in ${args//,/ }; do
+            expanded="$expanded,$(hostlookup "$host")"
+         done
+         expanded="${expanded:1}" ;;
+      "hostgroup")
+         unset expanded
+         test "${hostgroups[$args]}" = "" && error "Hostgroup $args not found."
+         for host in ${hostgroups[$args]//,/ }; do
             expanded="$expanded,$(hostlookup "$host")"
          done
          expanded="${expanded:1}" ;;
       "network")
          test ${networks[$args]} = "" && error "Network $args not found."
          expanded="${networks[$args]}" ;;
+      "networkgroup")
+         unset expanded
+         test "${networkgroups[$args]}" = "" && error "Networkgroup $args not found."
+         for network in ${networkgroups[$args]//,/ }; do
+            test "${networks[$network]}" = "" && error "Networkgroup $args, network $network not found."
+            expanded="$expanded,${networks[$network]}"
+         done
+         expanded="${expanded:1}" ;;
+      *) error "Unknown function $functiontype"
    esac
 }
 
