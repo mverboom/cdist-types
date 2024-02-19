@@ -36,3 +36,5 @@ v default loopback allow for input,output,forward, make global to disable
 v add support for groups of hosts
 v add support for groups of networks
 v make line parser more robust
+* comment overrule per line (or maybe combine with section comment)
+* global switch to disable package install

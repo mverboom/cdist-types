@@ -2,3 +2,4 @@ state
 db
 includedir
 rules
+packageinstall

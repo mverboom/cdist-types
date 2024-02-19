@@ -134,14 +134,15 @@ for cmd in "${cmds[@]}"; do
 done
 
 state="$(cat "$__object/parameter/state")"
+packageinstall="$(cat "$__object/parameter/packageinstall")"
 
 # Process absent state
 if test "$state" = "absent"; then
    __systemd_unit firewall.service --state absent
    require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
-   require="__systemd_unit/firewall.service" __package ulogd2 --state absent
    require="__systemd_unit/firewall.service" __file /etc/firewall-ipv4.fw --state absent
    require="__systemd_unit/firewall.service" __file /etc/firewall-ipv6.fw --state absent
+   test "$packageinstall" = "true" && require="__systemd_unit/firewall.service" __package ulogd2 --state absent
    exit 0
 fi
 
@@ -264,7 +265,7 @@ done
 
 # Distribute restore files and install or remove software and service
 if test -e "${rulesipt}-4" -o -e "${rulesipt}-6"; then
-   __package iptables
+   test "$packageinstall" = "true" && __package iptables
    __file /usr/local/bin/firewall \
       --owner root --group root --mode 0700 --source "${__type}/files/firewall"
    __systemd_unit firewall.service \
@@ -276,8 +277,8 @@ if test -e "${rulesipt}-4" -o -e "${rulesipt}-6"; then
    rm -f "${rulesipt}"-*
 fi
 if test "$logging" = 0; then
-   __package ulogd2 --state absent
+   test "$packageinstall" = "true" && __package ulogd2 --state absent
 else
-   __package ulogd2 --state present
+   test "$packageinstall" = "true" && __package ulogd2 --state present
 fi
 unset CDIST_ORDER_DEPENDENCY

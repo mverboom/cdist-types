@@ -73,6 +73,10 @@ log
 log_<chain>
    Set logging (like log) for specific chain. When log is specified this will override.
 
+packageinstall
+   This setting enables installation and removal of packages that might be required. This
+   settings default to true.
+
 Any other section header will be used as a description to group rules together. The description
 will be used as comments for rules generated in the section. The defined rules of a specific type
 will be generated in the order they are in (when multiple are defined in a section). The types
