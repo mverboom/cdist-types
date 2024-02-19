@@ -90,7 +90,7 @@ doexpand() {
             "prohibited") expanded="-j REJECT --reject-with icmp-admin-prohibited" ;;
             *) error "Unknown reject type $args" ;;
          esac ;;
-      "log") expanded="-j NFLOG --nflog-prefix \"${args//%/ }\""; logging=1 ;;
+      "log") expanded="-j NFLOG --nflog-prefix \"${args//%/ } \""; logging=1 ;;
       "service")
          test "${services[$args]}" = "" && error "Service port $args not found."
          expanded="${services[$args]/\/*/}" ;;
@@ -239,7 +239,7 @@ for proto in "${protos[@]}"; do
       log="${global[log_$chain]}"
       test -z "$log" && log="${global[log]}"
       test -n "$log" && {
-         genrule $proto filter "-A ${chain^^} -j NFLOG --nflog-prefix \"$log\""
+         genrule $proto filter "-A ${chain^^} -j NFLOG --nflog-prefix \"$log \""
          logging=1
       }
    done
