@@ -232,8 +232,8 @@ for proto in "${protos[@]}"; do
       genrule $proto filter "-P ${chain^^} ${chainpolicy^^}"
       if test "${chainpolicy^^}" = "DROP" -a "${global[loopback]}" != "false"; then
          case "${chain^^}" in
-            "INPUT") genrule $proto filter "-I ${chain^^} -i lo -j ACCEPT" ;;
-            "OUTPUT") genrule $proto filter "-I ${chain^^} -o lo -j ACCEPT" ;;
+            "INPUT") genrule $proto filter "-I ${chain^^} -i lo -j ACCEPT -m comment --comment \"Allow loopback\"" ;;
+            "OUTPUT") genrule $proto filter "-I ${chain^^} -o lo -j ACCEPT -m comment --comment \"Allow loopback\"" ;;
          esac
       fi
       log="${global[log_$chain]}"
