@@ -36,6 +36,7 @@ readconfig() {
 		! test -e "${includedir}/${rulesfile}" && error "Unable to file include file $rulesfile"
 		readconfig "${includedir}/${rulesfile}"
 	     else
+                [[ " ${sections[@]} " =~ " ${section} " ]] && error "Section ${section} redefined in file $rulesfile"
 	        sections+=( "$section" )
 	     fi
 	  fi
