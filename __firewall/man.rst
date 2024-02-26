@@ -145,6 +145,10 @@ The optional database file can be used to store specific definitions of:
 * networks
 * networkgroups
 
+The value of each alias can either have a static value, or a value which
+starts with @. In the last case, what follows the @ will be executed as a command. The output
+of the command is assigned to the alias.
+
 services
    Combinations of portnumber followed by either 'tcp' or 'udp'.
 

@@ -24,6 +24,11 @@ v macro reject tcp-reject -j REJECT --reject-with tcp-reset
 v verify required commands: dig?
 v marco log any remaining packets?
 v global logging per chain
+v default loopback allow for input,output,forward, make global to disable
+v add support for groups of hosts
+v add support for groups of networks
+v make line parser more robust
+v global switch to disable package install
 * option to exclude comments
 * cleanup
 * single rule type for both ipv4 and ipv6
@@ -32,9 +37,7 @@ v global logging per chain
   * location in ruleset depending on policy
   * only allow specific icmp types for optimal tcp/udp
 * macro's for icmp matching?
-v default loopback allow for input,output,forward, make global to disable
-v add support for groups of hosts
-v add support for groups of networks
-v make line parser more robust
 * comment overrule per line (or maybe combine with section comment)
-* global switch to disable package install
+* add option to generate rules but not install them
+* loopback option true/false/auto (follow policy)
+* hostgroup with command dynamic expand
