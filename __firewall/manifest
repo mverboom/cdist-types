@@ -17,6 +17,7 @@ readdb() {
       if [[ $var == \[*] ]]; then
          section="${var:1:-1}"
       elif [[ $val ]]; then
+         test "${val:0:1}" = "@" && val="$(bash -c "${val:1}")"
          declare -g -A "$section[$var]=$val"
       fi
    done < <(grep -v "^#" "$1")
