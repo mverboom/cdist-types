@@ -1,6 +1,5 @@
 [Unit]
 Description=firewall
-After=network.target
 
 [Service]
 Type=simple
@@ -9,4 +8,4 @@ ExecStart=/usr/local/bin/firewall start
 ExecStop=/usr/local/bin/firewall stop
 
 [Install]
-WantedBy=network-online.target
+WantedBy=multi-user.target
