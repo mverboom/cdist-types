@@ -296,6 +296,6 @@ if test "$logging" = 0; then
 else
    test "${global[packageinstall]}" != "false" -a "$ULOG" -eq 1 && __package ulogd2 --state present
    test "$ULOG" -eq 0 && __file /etc/rsyslog.d/firewall.conf \
-      --owner root --group root --mode 0644 --source "${__type}/files/rsyslog" --state present
+      --owner root --group root --mode 0644 --source "${__type}/files/rsyslog" --onchange 'service rsyslog restart' --state present
 fi
 unset CDIST_ORDER_DEPENDENCY
