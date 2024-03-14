@@ -1,0 +1,4 @@
+# Managed by cdist
+
+:msg, contains, "firewall: " -/var/log/firewall.log
+& ~
