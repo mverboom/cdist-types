@@ -92,7 +92,8 @@ doexpand() {
             "prohibited") expanded="-j REJECT --reject-with icmp-admin-prohibited" ;;
             *) error "Unknown reject type $args" ;;
          esac ;;
-      "log") expanded="-j NFLOG --nflog-prefix \"${args//%/ } \""; logging=1 ;;
+      #"log") expanded="-j NFLOG --nflog-prefix \"${args//%/ } \""; logging=1 ;;
+      "log") expanded="${LOG}${args//%/ } \""; logging=1 ;;
       "service")
          test "${services[$args]}" = "" && error "Service port $args not found."
          expanded="${services[$args]/\/*/}" ;;
@@ -136,6 +137,7 @@ for cmd in "${cmds[@]}"; do
 done
 
 state="$(cat "$__object/parameter/state")"
+os=$(cat "$__global/explorer/os")
 
 # Process absent state
 if test "$state" = "absent"; then
@@ -143,7 +145,7 @@ if test "$state" = "absent"; then
    require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
    require="__systemd_unit/firewall.service" __file /etc/firewall-ipv4.fw --state absent
    require="__systemd_unit/firewall.service" __file /etc/firewall-ipv6.fw --state absent
-   test "${globa[packageinstall]}" != "false" && require="__systemd_unit/firewall.service" __package ulogd2 --state absent
+   test "${globa[packageinstall]}" != "false" -a "$ULOG" -eq 1 && require="__systemd_unit/firewall.service" __package ulogd2 --state absent
    exit 0
 fi
 
@@ -151,6 +153,15 @@ test -f "$__object/parameter/rules" || error "No rules specified."
 rules="$(cat "$__object/parameter/rules")"
 test -f "$__object/parameter/db" && db="$(cat "$__object/parameter/db")"
 test -f "$__object/parameter/includedir" && includedir="$(cat "$__object/parameter/includedir")"
+
+ULOG=1
+LOG="-j NFLOG --nflog-prefix \""
+case "$os" in
+"redhat")
+   LOG="-j LOG --log-prefix \"firewall: "
+   ULOG=0
+;;
+esac
 
 # Read rules
 sections=()
@@ -241,7 +252,8 @@ for proto in "${protos[@]}"; do
       log="${global[log_$chain]}"
       test -z "$log" && log="${global[log]}"
       test -n "$log" && {
-         genrule $proto filter "-A ${chain^^} -j NFLOG --nflog-prefix \"$log \""
+         #genrule $proto filter "-A ${chain^^} -j NFLOG --nflog-prefix \"$log \""
+         genrule $proto filter "-A ${chain^^} ${LOG}$log \""
          logging=1
       }
    done
@@ -278,8 +290,8 @@ if test -e "${rulesipt}-4" -o -e "${rulesipt}-6"; then
    rm -f "${rulesipt}"-*
 fi
 if test "$logging" = 0; then
-   test "${global[packageinstall]}" != "false" && __package ulogd2 --state absent
+   test "${global[packageinstall]}" != "false" -a "$ULOG" -eq 1  && __package ulogd2 --state absent
 else
-   test "${global[packageinstall]}" != "false" && __package ulogd2 --state present
+   test "${global[packageinstall]}" != "false" -a "$ULOG" -eq 1 && __package ulogd2 --state present
 fi
 unset CDIST_ORDER_DEPENDENCY
