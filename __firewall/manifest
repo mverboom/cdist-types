@@ -145,7 +145,7 @@ if test "$state" = "absent"; then
    require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
    require="__systemd_unit/firewall.service" __file /etc/firewall-ipv4.fw --state absent
    require="__systemd_unit/firewall.service" __file /etc/firewall-ipv6.fw --state absent
-   test "${globa[packageinstall]}" != "false" -a "$ULOG" -eq 1 && require="__systemd_unit/firewall.service" __package ulogd2 --state absent
+   test "${global[packageinstall]}" != "false" -a "$ULOG" -eq 1 && require="__systemd_unit/firewall.service" __package ulogd2 --state absent
    exit 0
 fi
 
