@@ -1,4 +1,16 @@
 # Managed by cdist
 
-:msg, contains, "firewall: " -/var/log/firewall.log
-& ~
+template (name="custom_iptables" type="list") {
+   property(name="timegenerated" dateFormat="rfc3164" )
+   constant(value=" ")
+   property(name="hostname")
+   constant(value=" ")
+   property(name="$!msg")
+   constant(value="\n")
+}
+
+:msg, contains, "firewall: " {
+   set $!msg = replace($msg, 'firewall: ', '');
+   action(type="omfile" file="/var/log/firewall.log" template="custom_iptables")
+   stop
+}
