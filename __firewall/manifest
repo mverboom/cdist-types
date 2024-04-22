@@ -73,6 +73,7 @@ doexpand() {
 
       val="${hosts[$key]}"
       test "$val" != "" && { echo "$val"; return; }
+      [[ "$key" =~ ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?)$ ]] && { echo "$key"; return; }
       val="$( dig +short +search "$key" "$t" | tail -1)"
       test "$val" = "" && error "Could not find host ${key}"
       echo "$val"
