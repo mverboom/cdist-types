@@ -1,10 +1,18 @@
 #!/bin/bash
+#
+# ToDo:
+# * flush and load ipset's
+#
 BASEDIR=/etc/firewall
 POLV4="${BASEDIR}"/firewall-ipv4.fw
 POLV6="${BASEDIR}"/firewall-ipv6.fw
+IPSETC="${BASEDIR}"/ipset-create
+IPSETI="${BASEDIR}"/ipset-items
 
 case "$1" in
 "start")
+   test -e "$IPSETC" && . "$IPSETC"
+   test -e "$IPSETI" && ipset restore < "$IPSETI"
    test -e "$POLV4" && iptables-restore "$POLV4"
    test -e "$POLV6" && ip6tables-restore "$POLV6"
    ;;
