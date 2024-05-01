@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# apt install ipset
+# ipset create test hash:ip family inet|inet6
+# ipset destroy
+# iptables -A FORWARD -m set --match-set blacklist dst -j DROP
+
 exec > /tmp/firewall.log 2>&1
 set -x
 
@@ -263,6 +268,7 @@ done
 export CDIST_ORDER_DEPENDENCY=1
 
 # Generate ip[6]tables-restore files
+__directory /etc/firewall --owner root --group root --mode 700 --state present
 for proto in "${protos[@]}"; do
    for table in filter mangle nat; do
       if test -e "${rulesipt}-${proto}-${table}"; then
@@ -273,7 +279,8 @@ for proto in "${protos[@]}"; do
          ) >> "${rulesipt}-${proto}"
       fi
    done
-   test -e "${rulesipt}-${proto}" && __file /etc/firewall-ipv${proto}.fw \
+   test -e "${rulesipt}-${proto}" && 
+      require="__directory/etc/firewall" __file /etc/firewall/firewall-ipv${proto}.fw \
       --owner root --group root --mode 0400 --source - < "${rulesipt}-${proto}"
 done
 
