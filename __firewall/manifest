@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# apt install ipset
-# ipset create test hash:ip family inet|inet6
-# ipset destroy
-# iptables -A FORWARD -m set --match-set blacklist dst -j DROP
-
 exec > /tmp/firewall.log 2>&1
 set -x
 
@@ -83,6 +78,25 @@ doexpand() {
       echo "$val"
    }
 
+   hostgroup() {
+      local name="${ipv}-$1"
+      local create="${rulesipt}-ipset-create"
+      local items="${rulesipt}-ipset-items"
+
+      ! test -e "$create" && touch "$create"
+      grep "^# ${name}$" "$create" > /dev/null && return
+
+      local inet="inet"
+      test "$ipv" = "6" && inet="inet6"
+      { echo "# ${name}"
+        echo "ipset create -exist ${name} hash:ip family ${inet}"
+      } >> "$create"
+      echo "flush ${name}" >> "$items"
+      for item in ${expanded}; do
+         echo "add ${name} ${item}" >> "$items"
+      done
+   }
+
    expanded="$1"
    local item="$1" functiontype args lookuptable
    test "${item/(/}" = "${item}" && { echo "$item"; return 0; }
@@ -117,9 +131,10 @@ doexpand() {
          unset expanded
          test "${hostgroups[$args]}" = "" && error "Hostgroup $args not found."
          for host in ${hostgroups[$args]//,/ }; do
-            expanded="$expanded,$(hostlookup "$host")"
+            expanded="$expanded $(hostlookup "$host")"
          done
-         expanded="${expanded:1}" ;;
+         hostgroup "$args"
+         expanded="-m set --match-set ${ipv}-${args}" ;;
       "network")
          test ${networks[$args]} = "" && error "Network $args not found."
          expanded="${networks[$args]}" ;;
@@ -157,8 +172,8 @@ esac
 if test "$state" = "absent"; then
    __systemd_unit firewall.service --state absent
    require="__systemd_unit/firewall.service" __file /usr/local/bin/firewall --state absent
-   require="__systemd_unit/firewall.service" __file /etc/firewall-ipv4.fw --state absent
-   require="__systemd_unit/firewall.service" __file /etc/firewall-ipv6.fw --state absent
+   require="__systemd_unit/firewall.service" __file /etc/firewall/firewall-ipv4.fw --state absent
+   require="__systemd_unit/firewall.service" __file /etc/firewall/firewall-ipv6.fw --state absent
    test "${global[packageinstall]}" != "false" -a "$ULOG" -eq 1 && require="__systemd_unit/firewall.service" __package ulogd2 --state absent
    test "$ULOG" -eq 0 && __file /etc/rsyslog.d/firewall.conf --state absent
    exit 0
@@ -280,9 +295,19 @@ for proto in "${protos[@]}"; do
       fi
    done
    test -e "${rulesipt}-${proto}" && 
-      require="__directory/etc/firewall" __file /etc/firewall/firewall-ipv${proto}.fw \
-      --owner root --group root --mode 0400 --source - < "${rulesipt}-${proto}"
+      __file /etc/firewall/firewall-ipv${proto}.fw \
+         --owner root --group root --mode 0400 --source - < "${rulesipt}-${proto}"
 done
+# Generate ipset files
+ipset=0
+for ipset in ipset-create ipset-items; do
+   if test -e "${rulesipt}-${ipset}"; then
+      __file /etc/firewall/${ipset} \
+         --owner root --group root --mode 0400 --source - < "${rulesipt}-${ipset}"
+     ipset=1
+   fi
+done
+test "$ipset" = "1" && __package ipset
 
 # Distribute restore files and install or remove software and service
 if test -e "${rulesipt}-4" -o -e "${rulesipt}-6"; then
@@ -293,7 +318,7 @@ if test -e "${rulesipt}-4" -o -e "${rulesipt}-6"; then
       --source "${__type}/files/firewall.service" \
       --enablement-state enabled
    __check_messages firewall \
-      --pattern '^__file/etc/firewall-ipv' \
+      --pattern '^__file/etc/firewall/' \
       --execute "systemctl restart firewall.service"
    rm -f "${rulesipt}"-*
 fi
