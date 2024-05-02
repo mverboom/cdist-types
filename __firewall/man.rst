@@ -109,6 +109,7 @@ hosts()
 
 hostgroup()
    The hostgroup() function expands the host group into the ip adresses of all hosts assigned to the group.
+   These are loaded as an ipset in the kernel. This needs to be kept in mind when specifing the syntax.
 
 network()
    The network() function will expand the network name passwd to a subnet. This will be looked up
@@ -199,6 +200,9 @@ Example configuration file for '/rulesets/systemname.example.com':
    filter=-A INPUT -s network(internal) dservice(http) -j ACCEPT
    filter=-A INPUT dservice(http) log(system accessing http)
 
+   [log external hosts]
+   filter=-A INPUT hostgroup(external) src log(external)
+
    [drop http from other sources]
    filter=-A INPUT dservice(http) -j DROP
    filter6=-A INPUT dservice(http) -j DROP
@@ -218,6 +222,9 @@ Example of the database file for '/rulesets/db':
    [networks]
    internal=192.168.1.0/24
    admin=192.168.2.0/24
+
+   [hostgroup]
+   external=@/usr/local/bin/externalhosts.sh
 
 MORE INFORMATION
 ----------------
