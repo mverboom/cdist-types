@@ -78,8 +78,9 @@ doexpand() {
       echo "$val"
    }
 
-   hostgroup() {
-      local name="${ipv}-$1"
+   group() {
+      local itype="$1"
+      local name="${ipv}-${itype}-$2"
       local create="${rulesipt}-ipset-create"
       local items="${rulesipt}-ipset-items"
 
@@ -89,7 +90,7 @@ doexpand() {
       local inet="inet"
       test "$ipv" = "6" && inet="inet6"
       { echo "# ${name}"
-        echo "ipset create -exist ${name} hash:ip family ${inet}"
+        echo "ipset create -exist ${name} hash:${itype} family ${inet}"
       } >> "$create"
       echo "flush ${name}" >> "$items"
       for item in ${expanded}; do
@@ -111,7 +112,6 @@ doexpand() {
             "prohibited") expanded="-j REJECT --reject-with icmp-admin-prohibited" ;;
             *) error "Unknown reject type $args" ;;
          esac ;;
-      #"log") expanded="-j NFLOG --nflog-prefix \"${args//%/ } \""; logging=1 ;;
       "log") expanded="${LOG}${args//%/ } \""; logging=1 ;;
       "service")
          test "${services[$args]}" = "" && error "Service port $args not found."
@@ -133,8 +133,8 @@ doexpand() {
          for host in ${hostgroups[$args]//,/ }; do
             expanded="$expanded $(hostlookup "$host")"
          done
-         hostgroup "$args"
-         expanded="-m set --match-set ${ipv}-${args}" ;;
+         group ip "$args"
+         expanded="-m set --match-set ${ipv}-ip-${args}" ;;
       "network")
          test ${networks[$args]} = "" && error "Network $args not found."
          expanded="${networks[$args]}" ;;
@@ -143,9 +143,10 @@ doexpand() {
          test "${networkgroups[$args]}" = "" && error "Networkgroup $args not found."
          for network in ${networkgroups[$args]//,/ }; do
             test "${networks[$network]}" = "" && error "Networkgroup $args, network $network not found."
-            expanded="$expanded,${networks[$network]}"
+            expanded="$expanded ${networks[$network]}"
          done
-         expanded="${expanded:1}" ;;
+         group net "$args"
+         expanded="-m set --match-set ${ipv}-net-${args}" ;;
       *) error "Unknown function $functiontype"
    esac
 }
