@@ -93,7 +93,9 @@ iptables syntax (see examples). There are some supporting functions available wi
 
 * host()
 * hosts()
+* hostgroup()
 * network()
+* networkgroup()
 * service()
 * dservice()
 * reject()
@@ -117,6 +119,7 @@ network()
 
 networkgroup()
    The networkgroup() function expands the netowrk group into the ip adresses of all networks assigned to the group.
+   These are loaded as an ipset in the kernel. This needs to be kept in mind when specifing the syntax.
 
 service()
    The name of a specific service will be expanded to the definition found in the database
