@@ -81,7 +81,7 @@ doexpand() {
 
    group() {
       local itype="$1"
-      local name="${ipv}-${itype}-$2"
+      local name="${proto}-${itype}-$2"
       local create="${rulesipt}-ipset-create"
       local items="${rulesipt}-ipset-items"
 
@@ -89,7 +89,7 @@ doexpand() {
       grep "^# ${name}$" "$create" > /dev/null && return
 
       local inet="inet"
-      test "$ipv" = "6" && inet="inet6"
+      test "$proto" = "6" && inet="inet6"
       { echo "# ${name}"
         echo "ipset create -exist ${name} hash:${itype} family ${inet}"
       } >> "$create"
@@ -135,7 +135,7 @@ doexpand() {
             expanded="$expanded $(hostlookup "$host")"
          done
          group ip "$args"
-         expanded="-m set --match-set ${ipv}-ip-${args}" ;;
+         expanded="-m set --match-set ${proto}-ip-${args}" ;;
       "network")
          test ${networks[$args]} = "" && error "Network $args not found."
          expanded="${networks[$args]}" ;;
@@ -147,7 +147,7 @@ doexpand() {
             expanded="$expanded ${networks[$network]}"
          done
          group net "$args"
-         expanded="-m set --match-set ${ipv}-net-${args}" ;;
+         expanded="-m set --match-set ${proto}-net-${args}" ;;
       *) error "Unknown function $functiontype"
    esac
 }
