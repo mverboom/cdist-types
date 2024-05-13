@@ -319,9 +319,10 @@ if test -e "${rulesipt}-4" -o -e "${rulesipt}-6"; then
    __systemd_unit firewall.service \
       --source "${__type}/files/firewall.service" \
       --enablement-state enabled
-   __check_messages firewall \
-      --pattern '^__file/etc/firewall/' \
-      --execute "systemctl restart firewall.service"
+   require='__systemd_unit/firewall.service __file/etc/firewall/firewall-ipv4.fw __file/etc/firewall/firewall-ipv6.fw' \
+      __systemd_service firewall.service \
+         --action restart \
+         --if-required
    rm -f "${rulesipt}"-*
 fi
 if test "$logging" = 0; then
