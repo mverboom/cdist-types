@@ -68,11 +68,12 @@ doexpand() {
    hostlookup() {
       local key val
       key="$1"
-      t="A"
-      test "$proto" = "6" && t="AAAA"
-
+      [[ "$key" =~ ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?)$ ]] && { echo "$key"; return; }
+      [[ "$key" =~ ^(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}$ ]] && { echo "$key"; return; }
       val="${hosts[$key]}"
       test "$val" != "" && { echo "$val"; return; }
+      t="A"
+      test "$proto" = "6" && t="AAAA"
       val="$( dig +short +search "$key" "$t" | tail -1)"
       test "$val" = "" && error "Could not find host ${key}"
       echo "$val"
