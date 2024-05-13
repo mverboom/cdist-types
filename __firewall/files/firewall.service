@@ -2,7 +2,7 @@
 Description=firewall
 
 [Service]
-Type=simple
+Type=notify
 RemainAfterExit=yes
 ExecStart=/usr/local/bin/firewall start
 ExecStop=/usr/local/bin/firewall stop
