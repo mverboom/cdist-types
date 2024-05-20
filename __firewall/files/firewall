@@ -23,5 +23,5 @@ case "$1" in
    done
    ;;
 esac
-systemd-notify READY=1
+test "$NOTIFY_SOCKET" && systemd-notify READY=1
 exit 0
