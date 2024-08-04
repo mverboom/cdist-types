@@ -9,12 +9,14 @@ POLV6="${BASEDIR}"/firewall-ipv6.fw
 IPSETC="${BASEDIR}"/ipset-create
 IPSETI="${BASEDIR}"/ipset-items
 
+backup="$(mktemp)"
+
 case "$1" in
 "start")
    test -e "$IPSETC" && . "$IPSETC"
    test -e "$IPSETI" && ipset restore < "$IPSETI"
-   test -e "$POLV4" && iptables-restore "$POLV4"
-   test -e "$POLV6" && ip6tables-restore "$POLV6"
+   test -e "$POLV4" && { iptables-save > "$backup"; iptables-restore "$POLV4" || { iptables-restore "$backup"; exit 1; } }
+   test -e "$POLV6" && { ip6tables-save > "$backup"; ip6tables-restore "$POLV6" || { ip6tables-restore "$backup"; exit 1; } }
    ;;
 "stop")
    for chain in INPUT FORWARD OUTPUT; do
@@ -23,5 +25,6 @@ case "$1" in
    done
    ;;
 esac
+#rm -f "$backup"
 systemd-notify READY=1
 exit 0
