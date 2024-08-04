@@ -6,6 +6,7 @@ Type=notify
 RemainAfterExit=yes
 ExecStart=/usr/local/bin/firewall start
 ExecStop=/usr/local/bin/firewall stop
+ExecReload=/usr/local/bin/firewall start
 
 [Install]
 WantedBy=multi-user.target

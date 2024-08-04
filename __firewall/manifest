@@ -1,12 +1,12 @@
 #!/bin/bash
 
-exec > /tmp/firewall.log 2>&1
-set -x
+#exec > /tmp/firewall.log 2>&1
+#set -x
 
 set -e
 
 error() {
-   ( >&2 "Error: $1" )
+   echo "Error: $1" >&2
    exit 1
 }
 
@@ -208,7 +208,9 @@ done
 # Allow related and established
 test "${global[established]}" = "true" &&
    for proto in "${protos[@]}"; do
-      genrule $proto filter "-A INPUT -m state --state RELATED,ESTABLISHED -m comment --comment \"Allow related and established\" -j ACCEPT"
+      for chain in INPUT OUTPUT FORWARD; do
+         genrule $proto filter "-A $chain -m state --state RELATED,ESTABLISHED -m comment --comment \"Allow related and established\" -j ACCEPT"
+      done
    done
 
 # Always block icmp at top of ruleset
@@ -325,7 +327,7 @@ if test -e "${rulesipt}-4" -o -e "${rulesipt}-6"; then
       --enablement-state enabled
    require="__file/usr/local/bin/firewall __systemd_unit/firewall.service $(printf '%s ' ${SERVICE_RESTART_REQUIRES[@]})" \
       __systemd_service firewall.service \
-         --action restart \
+         --action reload \
          --if-required
    rm -f "${rulesipt}"-*
 fi
