@@ -25,7 +25,7 @@ readdb() {
 }
 
 readconfig() {
-   local var varstrip val section rulesfile tables=" filter nat mangle filter4 nat4 mangle4 filter6 nat6 mangle6"
+   local var varstrip proto val section rulesfile tables=" filter nat mangle"
    local globalkeys=" policy established icmp proto log loopback packageinstall "
 
    while IFS='=' read var val; do
@@ -50,9 +50,13 @@ readconfig() {
                 error "Unknown key ${var} in section global."
              declare -g -A "$section[$var]=$val"
           else
-             test "${tables/$var/}" = "${tables}" &&
+             varstrip="${var//[46]/}"
+             test "${tables/$varstrip/}" = "${tables}" &&
                 error "Unknown table ${var} in section $section."
-             declare -g -A "$var[${itemcount}%${section}]=$val"
+             test "${var}" = "${varstrip}" && proto="4" || proto="${var:${#varstrip}}"
+             for (( i=0 ; i < ${#proto} ; i++ )); do
+                declare -g -A "${varstrip}${proto:$i:1}[${itemcount}%${section}]=$val"
+             done
              itemcount=$(( itemcount + 1 ))
           fi
       fi
@@ -240,7 +244,7 @@ test "${global[icmp]}" = "false" &&
    done
 
 # Process rules
-declare -A tables=([4]="filter nat mangle filter4 nat4 mangle4"
+declare -A tables=([4]="filter4 nat4 mangle4"
                    [6]="filter6 nat6 mangle6" )
 logging=0
 for section in "${sections[@]}"; do

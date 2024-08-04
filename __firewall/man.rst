@@ -86,8 +86,8 @@ are applied in a specific order. The types recognized are:
 * nat
 * mangle
 
-When defined they default to IPv4 based rules. They can be postfixed by either 4 or 6 to make
-them specific for that protocol version.
+When defined they default to IPv4 based rules. They can be postfixed by either 4, 6 or 46 to make
+them specific for that protocol version(s).
 The type refers directly to the iptables table the rule should be in. The value can be normal
 iptables syntax (see examples). There are some supporting functions available within rules:
 
@@ -202,7 +202,7 @@ Example configuration file for '/rulesets/systemname.example.com':
    [#default_rules]
    
    [allow http from proxy, workstations and internal network]
-   filter=-A INPUT -s host(proxy) dservice(http) -j ACCEPT
+   filter46=-A INPUT -s host(proxy) dservice(http) -j ACCEPT
    filter=-A INPUT -s hosts(workstation1,workstation2) dservice(http) -j ACCEPT
    filter=-A INPUT -s network(internal) dservice(http) -j ACCEPT
    filter=-A INPUT dservice(http) log(system accessing http)
