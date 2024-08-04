@@ -1,13 +1,14 @@
 #!/bin/bash
 
-#exec > /tmp/firewall.log 2>&1
-#set -x
-
 set -e
 
 error() {
    echo "Error: $1" >&2
    exit 1
+}
+
+debug() {
+   echo "Debug: $1" >&2
 }
 
 readdb() {
@@ -65,18 +66,38 @@ genrule() {
 }
 
 doexpand() {
+   chkproto() {
+      local ip="$1"
+      [[ "$ip" =~ ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?)$ ]] && { echo 4; return; }
+      [[ "$ip" =~ ^([a-fA-F0-9]{0,4}:){1,8}[a-fA-F0-9]{0,4}$ ]] && { echo 6; return; }
+      return 1
+   }
+
    hostlookup() {
-      local key val
+      local key val parts
       key="$1"
-      [[ "$key" =~ ^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?)$ ]] && { echo "$key"; return; }
-      [[ "$key" =~ ^(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}$ ]] && { echo "$key"; return; }
-      val="${hosts[$key]}"
-      test "$val" != "" && { echo "$val"; return; }
+      test "$proto" = "$(chkproto "$key")" && { echo "$key"; return; }
+      parts=( ${hosts[$key]} )
+      for val in ${parts[@]} ; do
+         test "$(chkproto "$val")" = "$proto" && break
+      done
+      test "$proto" = "$(chkproto "$val")" && { echo "$val"; return; }
       t="A"
       test "$proto" = "6" && t="AAAA"
       val="$( dig +short +search "$key" "$t" | tail -1)"
-      test "$val" = "" && error "Could not find host ${key}"
+      test "$val" = "" && error "Could not find IPv${proto} host ${key}"
       echo "$val"
+   }
+
+   netlookup() {
+      local key val parts
+      key="$1"
+      test "$proto" = "$(chkproto "${key/\/*/}")" && { echo "$key"; return; }
+      parts=( ${networks[$key]} )
+      for val in ${parts[@]} ; do
+         test "$(chkproto "${val/\/*/}")" = "$proto" && { echo "$val"; return; }
+      done
+      error "Could not find IPv${proto} network for ${key}"
    }
 
    group() {
@@ -137,8 +158,7 @@ doexpand() {
          group ip "$args"
          expanded="-m set --match-set ${proto}-ip-${args}" ;;
       "network")
-         test ${networks[$args]} = "" && error "Network $args not found."
-         expanded="${networks[$args]}" ;;
+         expanded="$(netlookup "$args")" ;;
       "networkgroup")
          unset expanded
          test "${networkgroups[$args]}" = "" && error "Networkgroup $args not found."

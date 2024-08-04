@@ -158,12 +158,16 @@ services
 
 hosts
    Alias for the IP address of the host.
+   If multiple, space separated values are given, an attempt will be made to match the correct type of
+   IP version to the specific lookup (v4 or v6).
 
 hostgroups
    Alias for comma separated list of hosts.
 
 networks
    Alias for the network with netmask.
+   If multiple, space separated values are given, an attempt will be made to match the correct type of
+   IP version to the specific lookup (v4 or v6).
 
 networkgroups
    Alias for comma separated list of networks.
@@ -221,6 +225,7 @@ Example of the database file for '/rulesets/db':
 
    [hosts]
    proxy=10.30.20.20
+   database=10.30.20.25 2a0a:4cc1:3::25
 
    [networks]
    internal=192.168.1.0/24
