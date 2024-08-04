@@ -3,6 +3,7 @@ Description=firewall
 
 [Service]
 Type=notify
+NotifyAccess=all
 RemainAfterExit=yes
 ExecStart=/usr/local/bin/firewall start
 ExecStop=/usr/local/bin/firewall stop
