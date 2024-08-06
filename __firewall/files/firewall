@@ -14,7 +14,7 @@ backup="$(mktemp)"
 case "$1" in
 "start")
    test -e "$IPSETC" && . "$IPSETC"
-   test -e "$IPSETI" && ipset restore < "$IPSETI"
+   test -e "$IPSETI" && { ipset save > "$backup"; ipset restore < "$IPSETI" || { ipset restore < "$backup" ; exit 1; } }
    test -e "$POLV4" && { iptables-save > "$backup"; iptables-restore "$POLV4" || { iptables-restore "$backup"; exit 1; } }
    test -e "$POLV6" && { ip6tables-save > "$backup"; ip6tables-restore "$POLV6" || { ip6tables-restore "$backup"; exit 1; } }
    ;;
