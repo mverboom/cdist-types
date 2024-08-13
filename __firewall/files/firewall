@@ -24,6 +24,10 @@ case "$1" in
       test -e "$POLV6" && { ip6tables -P "$chain" ACCEPT; ip6tables -F "$chain"; }
    done
    ;;
+*)
+   echo "Usage: $0 <stop|start>"
+   exit 1
+   ;;
 esac
 rm -f "$backup"
 test "$NOTIFY_SOCKET" != "" && systemd-notify READY=1
