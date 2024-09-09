@@ -1,0 +1,28 @@
+#!/bin/bash
+
+if test "$(command -v /usr/bin/pvesubscription)"; then
+   echo "This host doesn't look like a Proxmox server."
+   exit 1
+fi
+
+state="$(cat "${__object}/parameter/state")"
+current_subscription_key="$(cat "${__object}/explorer/current_subscription_key")"
+
+case "$state" in
+   "present")
+      key="$(cat "${__object}/parameter/key")"
+      test -z "$key" && { echo "Parameter 'key' has no information."; exit 1; }
+
+      if test "$current_subscription_key" != "$key"; then
+         echo "/usr/bin/pvesubscription set $key"
+         echo "/usr/bin/pvesubscription update -force"
+      fi
+   ;;
+   "absent")
+      if test -n "$current_subscription_key"; then
+         echo "/usr/bin/pvesubscription delete"
+      fi
+   ;;
+esac
+
+exit 0
