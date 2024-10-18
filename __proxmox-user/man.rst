@@ -1,9 +1,9 @@
-cdist-type__proxmox-usermanager(7)
+cdist-type__proxmox-user(7)
 ==========================
 
 NAME
 ----
-cdist-type__proxmox-usermanager - Add/modify/remove a Proxmox user
+cdist-type__proxmox-user - Add/modify/remove a Proxmox user
 
 
 DESCRIPTION
