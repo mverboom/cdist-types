@@ -34,18 +34,18 @@ readconfig() {
           section="${section// /_}"
           if test "$section" != "global";then
              if test "${section:0:1}" = "#"; then
-		rulesfile="${section:1}"
-		! test -e "${includedir}/${rulesfile}" && error "Unable to file include file $rulesfile"
-		readconfig "${includedir}/${rulesfile}"
-	     else
+                rulesfile="${section:1}"
+                ! test -e "${includedir}/${rulesfile}" && error "Unable to file include file $rulesfile"
+                readconfig "${includedir}/${rulesfile}"
+             else
                 [[ " ${sections[@]} " =~ " ${section} " ]] && error "Section ${section} redefined in file $rulesfile"
-	        sections+=( "$section" )
-	     fi
-	  fi
+                sections+=( "$section" )
+             fi
+          fi
           itemcount=1
       elif [[ $val ]]; then
           if test "$section" = "global"; then
-	     varstrip="${var/_*/}"
+             varstrip="${var/_*/}"
              test "${globalkeys/$varstrip/}" = "${globalkeys}" &&
                 error "Unknown key ${var} in section global."
              declare -g -A "$section[$var]=$val"
@@ -222,13 +222,6 @@ test "${global[proto]}" = "" && protos=( 4 )
 test "${global[proto]/4/}" != "${global[proto]}" && protos+=( 4 )
 test "${global[proto]/6/}" != "${global[proto]}" && protos+=( 6 )
 
-# Flush any rules before installing
-for proto in "${protos[@]}"; do
-   for chain in INPUT OUTPUT FORWARD; do
-      genrule $proto filter "-F $chain"
-   done
-done
-
 # Allow related and established
 test "${global[established]}" = "true" &&
    for proto in "${protos[@]}"; do
@@ -316,15 +309,15 @@ declare -a SERVICE_RESTART_REQUIRES
 __directory /etc/firewall --owner root --group root --mode 700 --state present
 for proto in "${protos[@]}"; do
    for table in filter mangle nat; do
-      if test -e "${rulesipt}-${proto}-${table}"; then
-         ( echo "*${table}"
-           cat "${rulesipt}-${proto}-${table}"
-           rm -f "${rulesipt}-${proto}-${table}"
-           echo "COMMIT"
-         ) >> "${rulesipt}-${proto}"
-      fi
+      ( echo "*${table}"
+        if test -e "${rulesipt}-${proto}-${table}"; then
+          cat "${rulesipt}-${proto}-${table}"
+          rm -f "${rulesipt}-${proto}-${table}"
+        fi
+        echo "COMMIT"
+      ) >> "${rulesipt}-${proto}"
    done
-   test -e "${rulesipt}-${proto}" && 
+   test -e "${rulesipt}-${proto}" &&
       __file /etc/firewall/firewall-ipv${proto}.fw \
          --owner root --group root --mode 0400 --source - < "${rulesipt}-${proto}"
       SERVICE_RESTART_REQUIRES+=("__file/etc/firewall/firewall-ipv${proto}.fw")
