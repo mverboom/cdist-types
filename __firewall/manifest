@@ -222,11 +222,12 @@ test "${global[proto]}" = "" && protos=( 4 )
 test "${global[proto]/4/}" != "${global[proto]}" && protos+=( 4 )
 test "${global[proto]/6/}" != "${global[proto]}" && protos+=( 6 )
 
-# Allow related and established
+# Allow related and established, and drop invalid state
 test "${global[established]}" = "true" &&
    for proto in "${protos[@]}"; do
       for chain in INPUT OUTPUT FORWARD; do
-         genrule $proto filter "-A $chain -m state --state RELATED,ESTABLISHED -m comment --comment \"Allow related and established\" -j ACCEPT"
+         genrule $proto filter "-A $chain -m state --state RELATED,ESTABLISHED -m comment --comment \"Allow related and established packets\" -j ACCEPT"
+         genrule $proto filter "-A $chain -m state --state INVALID -m comment --comment \"Drop invalid packets\" -j DROP"
       done
    done
 
