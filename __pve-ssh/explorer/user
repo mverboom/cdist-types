@@ -1,0 +1,2 @@
+user="$( cat "$__object/parameter/user" )"
+grep "^${user}:" /etc/passwd

@@ -1,0 +1,1 @@
+grep -E '^ct[0-9]+:' /etc/passwd | cut -d ':' -f 1

@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+
+test -f "$__object/parameter/sshconfig" && 
+   sshconfig="$(cat "$__object/parameter/sshconfig")"
+test -f "$__object/parameter/sshcfg-sethostname" && 
+   sshcfg_sethostname="$(cat "$__object/parameter/sshcfg-sethostname")"
+sshcfg_short=0
+test -f "$__object/parameter/sshcfg-short" && 
+   sshcfg_short=1
+sshcfg_hostname=0
+test -f "$__object/parameter/sshcfg-hostname" && 
+   sshcfg_hostname=1
+user="$( cat "$__object/parameter/user" )"
+
+state="present"
+test -f "$__object/parameter/state" && state="$(cat "$__object/parameter/state")"
+
+case "$state" in
+"present")
+   pcts=( $( cat $__object/explorer/pct | cut -d ' ' -f 1 ) )
+   users=( $( cat $__object/explorer/ctusers | tr -d 'ct' ) )
+   userentry=( $( cat $__object/explorer/user | cut -d ':' -f 1-4,6-7 | tr ':' ' ' ) )
+
+   __file /usr/local/bin/pve-ssh-wrapper \
+      --owner root --group ${userentry[3]} \
+      --mode 750 --source $__type/files/pve-ssh-wrapper
+   
+   __file /etc/sudoers.d/pve-ssh \
+     --owner root --group root \
+     --mode 440 --source - <<-EOF
+	pve-ssh ALL=(ALL) NOPASSWD:/usr/bin/lxc-attach
+	EOF
+
+   __file /etc/ssh/sshd_config.d/pve-ssh.conf \
+      --owner root --group root \
+      --mode 640 \
+      --onchange "systemctl reload sshd.service" \
+      --source $__type/files/pve-ssh.conf
+
+   export CDIST_ORDER_DEPENDENCY=1
+
+   for ctid in $(printf "%d\n" ${pcts[*]} ${users[*]} | sort -u); do
+      key="ct${ctid}"
+      value="x:${userentry[2]}:${userentry[3]}:container ${ctid} ssh user:${userentry[4]}:/bin/bash"
+      if [[ ! " ${users[*]} " =~ " ${ctid} " || " ${pcts[*]} " =~ " ${ctid} " ]]; then
+         __key_value passwd-ct${ctid} --file /etc/passwd \
+            --delimiter ":" \
+            --key "$key" --value "$value" --state present
+      elif [[ ! " ${pcts[*]} " =~ " ${ctid} " ]]; then
+         __key_value passwd-ct${ctid} --file /etc/passwd \
+            --delimiter ":" \
+            --key "$key" --state absent
+      fi
+   done
+   __check_messages passwd-pwconv \
+      --pattern "^__key_value/passwd-ct" \
+      --execute "pwconv"
+
+   unset CDIST_ORDER_DEPENDENCY
+   
+   if test "$sshconfig" != ""; then
+      if test "$sshcfg_hostname" -eq 1; then
+         pvehost="$(cat "$__object/explorer/hostname")"
+         test "$sshcfg_sethostname" != "" && pvehost="$sshcfg_sethostname"
+      fi
+      rm -f "$sshconfig"
+      while read -u 5 id name; do 
+         ( echo -n "host $name"
+           test "$sshcfg_short" = "1" && echo " ${name/.*/}" || echo
+           test "$pvehost" != "" && echo "        hostname $pvehost"
+           echo "        user ct${id}"
+           echo ) >> "$sshconfig"
+      done 5< <(cat $__object/explorer/pct)
+   fi
+;;
+"absent")
+   for ctuser in $( cat $__object/explorer/ctusers); do
+      __line passwd-${ctuser} --file /etc/passwd \
+         --regex "^${ctuser}:" --state absent
+   done
+   __file /usr/local/bin/pve-ssh-wrapper --state absent
+   __file /etc/sudoers.d/pve-ssh --state absent
+   __file /etc/ssh/sshd_config.d/pve-ssh.conf --state absent
+   test "$sshconfig" != "" && rm -f "$sshconfig"
+;;
+*) echo "Unknown state $state"
+   exit 1
+;;
+esac
+
+exit 0

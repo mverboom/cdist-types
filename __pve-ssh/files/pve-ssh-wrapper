@@ -1,0 +1,21 @@
+#!/bin/bash
+PCTID="${USER/ct/}"
+re='^[0-9]+$'
+! [[ "$PCTID" =~ $re ]] && exit 1
+test "$PCTID" -lt 1 -o "$PCTID" -gt 65565 && exit 1
+
+if [[ "$SSH_ORIGINAL_COMMAND" == */sftp-server* ]] || [[ "$SSH_ORIGINAL_COMMAND" == *internal-sftp* ]]; then
+    # SFTP subsystem request → run sftp-server inside the container
+    exec /usr/bin/sudo /usr/bin/lxc-attach -n "${PCTID}" \
+        -- /usr/lib/openssh/sftp-server
+elif [[ -n "$SSH_ORIGINAL_COMMAND" ]]; then
+    # Command execution (scp, arbitrary commands)
+    cmd=( "/bin/bash" "-c" "${SSH_ORIGINAL_COMMAND}" )
+    exec /usr/bin/sudo /usr/bin/lxc-attach -n "${PCTID}" \
+        --clear-env --set-var HOME=/root -- "${cmd[@]}"
+else
+    # Interactive session
+    cmd=( "/bin/bash" )
+    exec /usr/bin/sudo /usr/bin/lxc-attach -n "${PCTID}" \
+        --clear-env --set-var HOME=/root -- "${cmd[@]}"
+fi

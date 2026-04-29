@@ -1,0 +1,79 @@
+cdist-type__pve-ssh(7)
+================================
+Mark Verboom <cdist--@--verboom.net>
+
+
+NAME
+----
+cdist-type__pve-ssh - Configure Proxmox Virtual Environment host for ssh through lxc-attach
+
+
+DESCRIPTION
+-----------
+This cdist type configures the Proxmox Virtual Environment host for ssh through
+lxc-attach. The purpose is to be able to ssh into an lxc container through the
+management interface of the Proxmox Virtual Environment server. This allows for
+root (no other users) ssh access without the container being required to run
+ssh. This is useful for management purposes.
+
+The type generates a custom ssh client configuration file. Be sure to use this file in
+order to transparently be able to log into an lxc container.
+
+The proces relies on sudo being installed. The type provisions the sudo configuration
+file but does not install sudo.
+
+This is a singleton and can only be applied once for a host (no object id required).
+
+Please beware that when you run multiple parallel connections and have a lot of
+containers on a single Proxmox Virtual Environment server, it might be required
+to increase the value of the MaxStartups variable on the Proxmox server.
+Otherwise connections could be dropped.
+
+WARNING:
+
+As openssh is phasing out support for the legacy scp protocol (not the command),
+sftp support has been added. This requires the sftp-server binary to be present in
+the container. As this type configures a Proxmox Virtual Environment server and not
+the containers running on it, this should be take care of elsewhere.
+
+
+REQUIRED PARAMETERS
+-------------------
+output::
+   Filename to append the hostname and list of packages to.
+
+OPTIONAL PARAMETERS
+-------------------
+state::
+   Configure (present) or deconfigure (absent) the server. Defaults to present.
+::sshconfig
+   Write a ssh config file to be used by users to the specified location.
+::sshcfg-hostname
+   This boolean specifies if the hostname of the Proxmox server is included in
+   the generated ssh config.
+::sshcfg-sethostname
+   Override the hostname of the Proxmox server to be included in the 
+   generated ssh config.
+::sshcfg-short
+   Reduces the name of the container to only the hostname and adds that to the
+   generated ssh config.
+   
+EXAMPLES
+--------
+
+--------------------------------------------------------------------------------
+# Configure host and output ssh configuration file.
+__pve-ssh --state present --sshconfig /home/cdist/.ssh/config-proxmox
+
+--------------------------------------------------------------------------------
+
+
+SEE ALSO
+--------
+- cdist-type(7)
+
+
+COPYING
+-------
+Copyright \(C) 2022 Mark Verboom. Free use of this software is
+granted under the terms of the GNU General Public License version 3 (GPLv3).
