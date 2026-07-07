@@ -26,7 +26,7 @@ if test "$lsb_id" = "Debian" -a "$fstype" = "vfat"; then
          --source $__type/files/preinst-pve-efikernelhack \
          --state exists --mode 0750
       __file /etc/apt/apt.conf.d/01pve-efikernelhack \
-         --state exists \
+         --state exists --mode 0644 \
          --source - <<-EOF
 	DPkg::Pre-Install-Pkgs {"/usr/local/bin/preinst-pve-efikernelhack";};
 	EOF
